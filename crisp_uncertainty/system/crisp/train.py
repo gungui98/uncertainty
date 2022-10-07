@@ -258,7 +258,7 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
         return train_set_features, train_set_segs
 
     def on_fit_end(self) -> None:
-        if self.hparams.save_samples:
+        if not self.hparams.save_samples:
             print("Generate train features")
 
             datamodule = self.trainer.datamodule
@@ -273,6 +273,11 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
             Path(self.hparams.save_samples).parent.mkdir(exist_ok=True)
             torch.save({'features': self.train_set_features,
                         'segmentations': self.train_set_segs}, self.hparams.save_samples)
+        else:
+            print("load features from cache", self.hparams.save_samples)
+            features = torch.load(self.hparams.save_samples)
+            self.train_set_features = features["features"]
+            self.train_set_segs = features["segmentations"]
 
     def on_test_epoch_start(self) -> None:
         print("Generate test features")
