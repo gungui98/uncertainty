@@ -1,4 +1,5 @@
 import math
+import os
 import random
 from pathlib import Path
 from typing import Any, Dict, Tuple
@@ -36,7 +37,7 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
 
         if self.hparams.decode_seg:
             self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
-
+        self.save_samples = os.path.join(self.log_dir, "sample.pth"),
         self.train_set_features = None
 
     def trainval_step(self, batch: Any, batch_nb: int):
@@ -258,7 +259,7 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
         return train_set_features, train_set_segs
 
     def on_fit_end(self) -> None:
-        if not self.hparams.save_samples:
+        if self.hparams.save_samples.exist():
             print("Generate train features")
 
             datamodule = self.trainer.datamodule
@@ -286,15 +287,7 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
 
         self.to(self.device)
 
-        if self.train_set_features is None:
-            datamodule.setup('fit')
-            train_set_features, train_set_segs = self.encode_set(datamodule.train_dataloader())
-            val_set_features, val_set_segs = self.encode_set(datamodule.val_dataloader())
-            train_set_features.extend(val_set_features)
-            train_set_segs.extend(val_set_segs)
-
-            self.train_set_features = torch.cat(train_set_features)
-            self.train_set_segs = torch.cat(train_set_segs)
+        self.on_fit_end()
 
         print("Latent features", self.train_set_features.shape)
         print("Latent segmentations", self.train_set_segs.shape)

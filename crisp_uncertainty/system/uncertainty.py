@@ -42,7 +42,7 @@ class UncertaintyEvaluationSystem(SystemEvaluationMixin):
         self.uncertainty_threshold = uncertainty_threshold
 
     def on_test_start(self) -> None:  # noqa: D102
-        self.upload_dir = Path.cwd() / self.UPLOAD_DIR_NAME
+        self.upload_dir = self.log_dir / self.UPLOAD_DIR_NAME
         if not self.upload_dir.exists():
             self.upload_dir.mkdir(parents=False, exist_ok=False)
 
