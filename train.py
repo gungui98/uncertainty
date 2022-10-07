@@ -82,27 +82,27 @@ if __name__ == '__main__':
         log.info(f"Loading weights from {weights}")
         model.load_state_dict(torch.load(weights, map_location=model.device)["state_dict"], strict=cfg.strict)
 
-    if cfg.train:
-        trainer.fit(model, datamodule=datamodule)
-
-        # Copy best model checkpoint to a predictable path + online tracker (if used)
-        best_model_path = Path(os.path.join(log_dir, "best_model.pth"))
-        best_model_path.parent.mkdir(exist_ok=True)
-
-        if trainer.checkpoint_callback is not None:
-            best_model = trainer.checkpoint_callback.best_model_path
-            copy2(best_model, str(best_model_path))
-
-            # Delete checkpoint after copy to avoid filling disk.
-            for file in trainer.checkpoint_callback.best_k_models.keys():
-                os.remove(file)
-
-            # Ensure we use the best weights (and not the latest ones) by loading back the best model
-            model = model.load_from_checkpoint(str(best_model_path), module=module)
-        else:  # If checkpoint callback is not used, save current model.
-            trainer.save_checkpoint(best_model_path)
-
-        # trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
+    # if cfg.train:
+    #     trainer.fit(model, datamodule=datamodule)
+    #
+    #     # Copy best model checkpoint to a predictable path + online tracker (if used)
+    #     best_model_path = Path(os.path.join(log_dir, "best_model.pth"))
+    #     best_model_path.parent.mkdir(exist_ok=True)
+    #
+    #     if trainer.checkpoint_callback is not None:
+    #         best_model = trainer.checkpoint_callback.best_model_path
+    #         copy2(best_model, str(best_model_path))
+    #
+    #         # Delete checkpoint after copy to avoid filling disk.
+    #         for file in trainer.checkpoint_callback.best_k_models.keys():
+    #             os.remove(file)
+    #
+    #         # Ensure we use the best weights (and not the latest ones) by loading back the best model
+    #         model = model.load_from_checkpoint(str(best_model_path), module=module)
+    #     else:  # If checkpoint callback is not used, save current model.
+    #         trainer.save_checkpoint(best_model_path)
+    #
+    #     # trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
     if cfg.test:
         trainer.test(model, datamodule=datamodule)
