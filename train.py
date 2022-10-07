@@ -30,10 +30,11 @@ if __name__ == '__main__':
     cfg = compose(config_name="default.yaml")
 
     cfg.seed = seed_everything(cfg.seed, workers=True)
+    experiment_name = "experiment-" + datetime.datetime.now().strftime("%d-%m-%y-%H-%M")
+    log_dir = os.path.join("log", experiment_name)
 
     callbacks = [EarlyStopping(patience=100), ModelCheckpoint(monitor="val_loss")]
-    experiment_name = "experiment-" + datetime.datetime.now().strftime("%d-%m-%y-%H-%M")
-    logger = WandbLogger(name=experiment_name, project="CRISP", offline=False)
+    logger = WandbLogger(name=experiment_name, project="CRISP", offline=False, save_dir=log_dir)
 
     if cfg.ckpt_path:
         trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=logger, callbacks=callbacks, gpus=1)
@@ -42,7 +43,6 @@ if __name__ == '__main__':
         trainer.logger.log_hyperparams(Namespace(**cfg))  # Save config to logger.
 
     # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
-    log_dir = os.path.join("log", experiment_name)
 
     # Instantiate datamodule
     datamodule = CamusDataModule(dataset_path=cfg.data.dataset_path,
@@ -69,6 +69,7 @@ if __name__ == '__main__':
                        train_log_kwargs=cfg.train_log_kwargs,
                        val_log_kwargs=cfg.val_log_kwargs,
                        save_samples=os.path.join(log_dir, "sample.pth"),
+                       **cfg.model,
                        **cfg.test_param,
                        )
 
@@ -82,27 +83,28 @@ if __name__ == '__main__':
         log.info(f"Loading weights from {weights}")
         model.load_state_dict(torch.load(weights, map_location=model.device)["state_dict"], strict=cfg.strict)
 
-    # if cfg.train:
-    #     trainer.fit(model, datamodule=datamodule)
-    #
-    #     # Copy best model checkpoint to a predictable path + online tracker (if used)
-    #     best_model_path = Path(os.path.join(log_dir, "best_model.pth"))
-    #     best_model_path.parent.mkdir(exist_ok=True)
-    #
-    #     if trainer.checkpoint_callback is not None:
-    #         best_model = trainer.checkpoint_callback.best_model_path
-    #         copy2(best_model, str(best_model_path))
-    #
-    #         # Delete checkpoint after copy to avoid filling disk.
-    #         for file in trainer.checkpoint_callback.best_k_models.keys():
-    #             os.remove(file)
-    #
-    #         # Ensure we use the best weights (and not the latest ones) by loading back the best model
-    #         model = model.load_from_checkpoint(str(best_model_path), module=module)
-    #     else:  # If checkpoint callback is not used, save current model.
-    #         trainer.save_checkpoint(best_model_path)
-    #
-    #     # trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
+    if cfg.train:
+        trainer.fit(model, datamodule=datamodule)
+
+
+        # Copy best model checkpoint to a predictable path + online tracker (if used)
+        best_model_path = Path(os.path.join(log_dir, "best_model.pth"))
+        best_model_path.parent.mkdir(exist_ok=True)
+
+        if trainer.checkpoint_callback is not None:
+            best_model = trainer.checkpoint_callback.best_model_path
+            copy2(best_model, str(best_model_path))
+
+            # Delete checkpoint after copy to avoid filling disk.
+            for file in trainer.checkpoint_callback.best_k_models.keys():
+                os.remove(file)
+
+            # Ensure we use the best weights (and not the latest ones) by loading back the best model
+            model = model.load_from_checkpoint(str(best_model_path), module=module)
+        else:  # If checkpoint callback is not used, save current model.
+            trainer.save_checkpoint(best_model_path)
+
+        # trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
     if cfg.test:
         trainer.test(model, datamodule=datamodule)

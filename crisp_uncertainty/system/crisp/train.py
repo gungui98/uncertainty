@@ -1,8 +1,8 @@
 import math
-import os
 import random
 from pathlib import Path
 from typing import Any, Dict, Tuple
+import os
 
 import torch
 import torch.nn as nn
@@ -37,6 +37,7 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
 
         if self.hparams.decode_seg:
             self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
+
         self.train_set_features = None
 
     def trainval_step(self, batch: Any, batch_nb: int):
@@ -258,7 +259,8 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
         return train_set_features, train_set_segs
 
     def on_fit_end(self) -> None:
-        if self.hparams.save_samples.exist():
+        # TODO: remove log_dir
+        if not os.path.exists(self.hparams.save_samples):
             print("Generate train features")
 
             datamodule = self.trainer.datamodule
