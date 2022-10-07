@@ -1,0 +1,49 @@
+
+data:
+    dataset_path: ./camus.h5
+    batch_size: 32
+    labels:
+      - BG
+      - LV
+      - MYO
+      - ATRIUM
+    fold: 5
+    use_sequence: False
+    max_patients: null
+    da: null
+    test_da: null
+    views: [ '2CH','4CH' ]
+
+model:
+  img_latent_size: 64
+  seg_latent_size: 16
+  latent_size: 8
+  img_blocks: 6
+  seg_blocks: 4
+  init_channels: 32
+  decode_img: False
+  decode_seg: True
+  linear_constraint_weight: 0
+  linear_constraint_attr: frame_pos
+  seg_channels: null
+
+num_epoch: 1
+weight_decay: 0.001
+lr: 0.001
+seed: 55
+ckpt_path: null
+weights: null
+train: True
+test: True
+
+train_log_kwargs:
+  prog_bar: False
+  logger: True
+  on_step: True
+  on_epoch: null
+
+val_log_kwargs:
+  prog_bar: False
+  logger: True
+  on_step: null
+  on_epoch: True

@@ -11,31 +11,13 @@ from vital.data.config import Tags
 from vital.data.data_module import VitalDataModule
 from vital.modules.generative.decoder import Decoder
 from vital.modules.generative.encoder import Encoder
-from vital.systems.system import SystemComputationMixin
+from vital.systems.system import SystemComputationMixin, VitalSystem
 import numpy as np
 
 
-class CRISP(SystemComputationMixin):
+class CRISP(VitalSystem):
     def __init__(
             self,
-            img_latent_size=64,
-            seg_latent_size=16,
-            latent_size=16,
-            img_blocks=6,
-            seg_blocks=4,
-            init_channels=48,
-            decode_img: bool = False,
-            decode_seg: bool = False,
-            cross_entropy_weight: float = 0.1,
-            dice_weight: float = 1,
-            clip_weight: float = 1,
-            reconstruction_weight: float = 2,
-            kl_weight: float = 1,
-            output_distribution: bool = False,
-            linear_constraint_weight: float = 0,
-            linear_constraint_attr: str = None,
-            interpolation_augmentation_samples: int = 0,
-            attr_reg: bool = False,
             seg_channels: int = None,
             *args,
             **kwargs
@@ -49,11 +31,9 @@ class CRISP(SystemComputationMixin):
 
 
         self.img_encoder = Encoder(input_shape, img_channels, self.hparams.img_blocks, self.hparams.init_channels,
-                                   self.hparams.img_latent_size, output_distribution=self.hparams.output_distribution,
-                                   use_batchnorm=True)
+                                   self.hparams.img_latent_size, use_batchnorm=True)
         self.seg_encoder = Encoder(input_shape, self.seg_channels, self.hparams.seg_blocks, self.hparams.init_channels,
-                                   self.hparams.seg_latent_size, output_distribution=self.hparams.output_distribution,
-                                   use_batchnorm=True)
+                                   self.hparams.seg_latent_size, use_batchnorm=True)
         if self.hparams.decode_img:
             self.img_decoder = Decoder(input_shape, img_channels, self.hparams.img_blocks, self.hparams.init_channels,
                                        self.hparams.img_latent_size, use_batchnorm=True)
@@ -78,7 +58,7 @@ class CRISP(SystemComputationMixin):
             # TODO add regression module for img latent space.
             self.regression_module = nn.Linear(self.hparams.seg_latent_size, 1)
 
-    def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
+    def summarize(self, *args, **kwargs) -> ModelSummary:
         # No predefined forward method.
         pass
 

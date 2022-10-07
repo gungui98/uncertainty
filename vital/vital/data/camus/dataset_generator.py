@@ -1,3 +1,4 @@
+import glob
 import logging
 import os
 from dataclasses import asdict
@@ -51,15 +52,15 @@ class CrossValidationDatasetGenerator:
     }
 
     def __call__(
-        self,
-        data: Path,
-        output: Path,
-        folds: Sequence[int] = range(1, 11),
-        target_image_size: Tuple[int, int] = (256, 256),
-        sequence_type: Literal["half_cycle", "full_cycle"] = "half_cycle",
-        sequence: bool = False,
-        register: bool = False,
-        labels: Sequence[Label] = None,
+            self,
+            data: Path,
+            output: Path,
+            folds: Sequence[int] = range(1, 11),
+            target_image_size: Tuple[int, int] = (256, 256),
+            sequence_type: Literal["half_cycle", "full_cycle"] = "half_cycle",
+            sequence: bool = False,
+            register: bool = False,
+            labels: Sequence[Label] = None,
     ) -> None:
         """Organizes the CAMUS data in a single HDF5 file, along with the metadata for cross-validation experiments.
 
@@ -102,6 +103,7 @@ class CrossValidationDatasetGenerator:
                 fold_group = cross_validation_group.create_group(f"fold_{fold}")
                 for subset, subset_name_in_data in self._subset_names_in_data.items():
                     fold_subset_patients = self.get_fold_subset_from_file(data, fold, subset_name_in_data)
+                    print("len:", len(fold_subset_patients))
                     fold_group.create_dataset(subset.value, data=np.array(fold_subset_patients, dtype="S"))
 
             # Get a list of all the patients in the dataset
@@ -117,7 +119,7 @@ class CrossValidationDatasetGenerator:
 
     @classmethod
     def get_fold_subset_from_file(
-        cls, data: Path, fold: int, subset: Literal["training", "validation", "testing"]
+            cls, data: Path, fold: int, subset: Literal["training", "validation", "testing"]
     ) -> List[str]:
         """Reads patient ids for a subset of a cross-validation configuration.
 
@@ -129,11 +131,20 @@ class CrossValidationDatasetGenerator:
         Returns:
             IDs of the patients that are included in the subset of the fold.
         """
-        list_fn = data / "listSubGroups" / f"subGroup{fold}_{subset}.txt"
-        # Open text file containing patient ids (one patient id by row)
-        with open(str(list_fn), "r") as f:
-            patient_ids = [line for line in f.read().splitlines()]
-        return patient_ids
+        # list_fn = data / "listSubGroups" / f"subGroup{fold}_{subset}.txt"
+        # # Open text file containing patient ids (one patient id by row)
+        # with open(str(list_fn), "r") as f:
+        #     patient_ids = [line for line in f.read().splitlines()]
+        patient_ids = glob.glob(str(data / "*"))
+        # patient_ids = sorted(patient_ids)
+        train_set = patient_ids[:int(len(patient_ids) * 0.8)]
+        test_set = patient_ids[int(len(patient_ids) * 0.8):int(len(patient_ids) * 0.9)]
+        val_set = patient_ids[int(len(patient_ids) * 0.9):]
+        if subset == "training":
+            return train_set
+        if subset == "testing":
+            return test_set
+        return val_set
 
     def _write_patient_data(self, patient_group: h5py.Group) -> None:
         """Writes the raw image data of a patient to a designated HDF5 group within the HDF5 file.
@@ -148,6 +159,7 @@ class CrossValidationDatasetGenerator:
             for view in asdict(View()).values()
             if (self.data / patient_id / self.info_filename_format.format(patient=patient_id, view=view)).exists()
         ]
+        print("available_view", self.data / patient_id / self.info_filename_format.format(patient=patient_id, view="2CH"))
         for view in available_views:
             # The order of the instants within a view dataset is chronological: ED -> ES -> ED
             data_x, data_y, info_view, instants = self._get_view_data(patient_id, view)
@@ -305,7 +317,7 @@ def main():
         "--sequence",
         action="store_true",
         help="Augment the dataset by adding data for the sequence between ED and ES, where the "
-        "groundtruths between ED and ES are interpolated linearly from reference segmentations",
+             "groundtruths between ED and ES are interpolated linearly from reference segmentations",
     )
     parser.add_argument("-r", "--register", action="store_true", help="Apply registering on images and groundtruths")
     parser.add_argument(
@@ -315,7 +327,7 @@ def main():
         nargs="+",
         choices=list(Label),
         help="Labels of the segmentation classes to take into account (including background). "
-        "If None, target all labels included in the data",
+             "If None, target all labels included in the data",
     )
     args = parser.parse_args()
 
