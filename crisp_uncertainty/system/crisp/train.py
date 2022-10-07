@@ -37,7 +37,6 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
 
         if self.hparams.decode_seg:
             self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
-        self.save_samples = os.path.join(self.log_dir, "sample.pth"),
         self.train_set_features = None
 
     def trainval_step(self, batch: Any, batch_nb: int):
