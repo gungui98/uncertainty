@@ -1,6 +1,6 @@
 
 data:
-    dataset_path: ./camus.h5
+    dataset_path: /home/jovyan/data/camus.h5
     batch_size: 32
     labels:
       - BG
