@@ -43,7 +43,8 @@ class UncertaintyEvaluationSystem(SystemEvaluationMixin):
 
     def on_test_start(self) -> None:  # noqa: D102
         self.upload_dir = Path.cwd() / self.UPLOAD_DIR_NAME
-        self.upload_dir.mkdir(parents=False, exist_ok=False)
+        if not self.upload_dir.exists():
+            self.upload_dir.mkdir(parents=False, exist_ok=False)
 
         if isinstance(self.trainer.logger, CometLogger):
             name = self.get_name()

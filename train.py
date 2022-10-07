@@ -70,6 +70,7 @@ if __name__ == '__main__':
                        val_log_kwargs=cfg.val_log_kwargs,
                        save_samples=os.path.join(log_dir, "sample.pth"),
                        **cfg.model,
+                       **cfg.test_param,
                        )
 
     if cfg.ckpt_path is not None:  # Load pretrained model if checkpoint is provided

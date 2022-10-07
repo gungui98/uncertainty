@@ -36,6 +36,15 @@ weights: null
 train: True
 test: True
 
+# test param
+test_param:
+  variance_factor: -1
+  num_samples: 150
+  uncertainty_threshold: 0.25
+  samples_path: null
+  iterations: 1
+  decode: true
+
 train_log_kwargs:
   prog_bar: False
   logger: True
