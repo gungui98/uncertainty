@@ -69,6 +69,7 @@ if __name__ == '__main__':
                        train_log_kwargs=cfg.train_log_kwargs,
                        val_log_kwargs=cfg.val_log_kwargs,
                        save_samples=os.path.join(log_dir, "sample.pth"),
+                       output_distribution=True,
                        **cfg.model,
                        **cfg.test_param,
                        )
