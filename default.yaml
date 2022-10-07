@@ -27,7 +27,7 @@ model:
   linear_constraint_attr: frame_pos
   seg_channels: null
 
-num_epoch: 1
+num_epoch: 5
 weight_decay: 0.001
 lr: 0.001
 seed: 55
