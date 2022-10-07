@@ -27,10 +27,10 @@ from crisp_uncertainty.system.uncertainty import UncertaintyEvaluationSystem
 
 class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, module: nn.Module, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.save_hyperparameters()
-
+        self.module = module
         if self.hparams.decode_img:
             self.img_reconstruction_loss = nn.MSELoss()
 
