@@ -57,18 +57,7 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
             img_mu = self.img_encoder(img)
             seg_mu = self.seg_encoder(seg_onehot)
 
-        if self.hparams.interpolation_augmentation_samples > 0 and not self.is_val_step:
-            augmented_samples = []
-            for i in range(self.hparams.interpolation_augmentation_samples // 2):
-                i1, i2 = random.randrange(len(img)), random.randrange(len(img))
-                aug_seg1 = torch.lerp(seg_mu[i1], seg_mu[i2], random.uniform(-0.5, -1))
-                aug_seg2 = torch.lerp(seg_mu[i1], seg_mu[i2], random.uniform(1.5, 2))
-                augmented_samples.extend([aug_seg1[None], aug_seg2[None]])
-
-            augmented_samples = torch.cat(augmented_samples, dim=0)
-            augmentated_seg_mu = torch.cat([seg_mu, augmented_samples], dim=0)
-        else:
-            augmentated_seg_mu = seg_mu
+        augmentated_seg_mu = seg_mu
 
         # Compute CLIP loss
         img_logits, seg_logits = self.clip_forward(img_mu, augmentated_seg_mu)
