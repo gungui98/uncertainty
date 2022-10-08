@@ -75,6 +75,7 @@ if __name__ == '__main__':
                        clip_weight=1,
                        reconstruction_weight=1,
                        kl_weight=0.5,
+                       attr_reg= False,
                        **cfg.model,
                        **cfg.test_param,
                        )
