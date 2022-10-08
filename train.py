@@ -70,6 +70,11 @@ if __name__ == '__main__':
                        val_log_kwargs=cfg.val_log_kwargs,
                        save_samples=os.path.join(log_dir, "sample.pth"),
                        output_distribution=None,
+                       cross_entropy_weight=0.1,
+                       dice_weight=1,
+                       clip_weight=1,
+                       reconstruction_weight=1,
+                       kl_weight=0.5,
                        **cfg.model,
                        **cfg.test_param,
                        )
@@ -86,7 +91,6 @@ if __name__ == '__main__':
 
     if cfg.train:
         trainer.fit(model, datamodule=datamodule)
-
 
         # Copy best model checkpoint to a predictable path + online tracker (if used)
         best_model_path = Path(os.path.join(log_dir, "best_model.pth"))
