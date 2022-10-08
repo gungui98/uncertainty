@@ -113,4 +113,5 @@ if __name__ == '__main__':
     #     # trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
     if cfg.test:
+        datamodule.setup("fit")
         trainer.test(model, datamodule=datamodule)
