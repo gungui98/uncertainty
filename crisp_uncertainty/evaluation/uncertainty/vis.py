@@ -26,7 +26,7 @@ class UncertaintyVisualization(PatientEvaluator):
         self.nb_upload = nb_upload
         self.count = 0
 
-        os.mkdir("figures")
+        self.figure_dir = self.upload_dir / "figures"
 
     def __call__(self, results: List[PatientResult]):
         """Generates uncertainty visualisations.
@@ -93,7 +93,7 @@ class UncertaintyVisualization(PatientEvaluator):
                             saved_data[f"{patient.id}_{view}_{instant}"] = patient_data
                             plt.savefig(self.upload_dir / f"{patient.id}_{view}_{instant}.png", dpi=100)
                         else:
-                            plt.savefig(f"figures/{patient.id}_{view}_{instant}.png", dpi=100)
+                            plt.savefig(str(self.figure_dir) + f"/{patient.id}_{view}_{instant}.png", dpi=100)
                         plt.close()
                         self.count += 1
 
