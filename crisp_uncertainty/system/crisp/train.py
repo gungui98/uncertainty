@@ -1,3 +1,4 @@
+import glob
 import math
 import random
 from pathlib import Path
@@ -194,7 +195,7 @@ class TrainCRISP(CRISP):
         return logs
 
     def log_images(
-            self, title: str, num_images:int,  axes_content):
+            self, title: str, num_images: int, axes_content):
         """Log images to Logger if it is a TensorBoardLogger or CometLogger.
 
         Args:
@@ -317,6 +318,7 @@ class TrainCRISP(CRISP):
 
     def on_fit_end(self) -> None:
         # TODO: remove log_dir
+        self.hparams.save_samples = "C:/Users/admin/PycharmProjects/CRISP-uncertainty/log/experiment-14-10-22-16-14/sample.pth"
         if not os.path.exists(self.hparams.save_samples):
             print("Generate train features")
 
@@ -346,7 +348,7 @@ class TrainCRISP(CRISP):
     def on_test_epoch_start(self) -> None:
         print("Generate test features")
 
-        datamodule = self.datamodule or self.trainer.datamodule
+        datamodule = self.trainer.datamodule
 
         self.to(self.device)
 
@@ -409,9 +411,8 @@ class TrainCRISP(CRISP):
                 metrics.update(evaluator_metrics)
             except Exception as e:
                 print(f"Failed with exception {e}")
-
-        if isinstance(self.trainer.logger, CometLogger):
-            self.trainer.logger.experiment.log_asset_folder(str(self.upload_dir), log_file_name=False)
+        visualize_files = glob.glob(os.path.join(str(self.upload_dir), "*.png"))
+        self.trainer.logger.log_image(key="test_result", images=visualize_files, caption=[os.path.basename(i)[:-4] for i in visualize_files] )
 
         metrics = {f'test_{k}': v for k, v in metrics.items()}
         self.log_dict(metrics)
@@ -547,7 +548,7 @@ class TrainCRISP(CRISP):
         return frame_uncertainty, uncertainty_map
 
     def find_threshold(self, datamodule):
-        if self.uncertainty_threshold == -1:
+        if self.hparams.uncertainty_threshold == -1:
             print("Finding ideal threshold...")
             datamodule.setup('fit')  # Need to access Validation set
             val_dataloader = datamodule.val_dataloader()
@@ -581,4 +582,4 @@ class TrainCRISP(CRISP):
 
             return thresholds[np.argmax(all_dices)]
         else:
-            return self.uncertainty_threshold
+            return self.hparams.uncertainty_threshold

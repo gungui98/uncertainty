@@ -91,9 +91,9 @@ class UncertaintyVisualization(PatientEvaluator):
                                 "unc_thresh": uncertainty,
                             }
                             saved_data[f"{patient.id}_{view}_{instant}"] = patient_data
-                            plt.savefig(self.upload_dir / f"{patient.id}_{view}_{instant}.png", dpi=100)
+                            plt.savefig(self.upload_dir / f"{os.path.basename(patient.id)}_{view}_{instant}.png", dpi=100)
                         else:
-                            plt.savefig(str(self.figure_dir) + f"/{patient.id}_{view}_{instant}.png", dpi=100)
+                            plt.savefig(str(self.figure_dir) + f"/{os.path.basename(patient.id)}_{view}_{instant}.png", dpi=100)
                         plt.close()
                         self.count += 1
 

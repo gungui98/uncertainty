@@ -14,6 +14,7 @@ from crisp_uncertainty.data.camus.config import CamusTags, Label, View
 from crisp_uncertainty.data.camus.data_struct import PatientData, ViewData
 from crisp_uncertainty.data.config import Subset
 from crisp_uncertainty.utils.transform import remove_labels, segmentation_to_tensor
+from crisp_uncertainty.utils.utils import squeeze
 
 ItemId = Tuple[str, int]
 InstantItem = Dict[str, Union[str, Tensor]]
@@ -404,6 +405,7 @@ class Camus(VisionDataset):
         return res
 
     @staticmethod
+    @squeeze
     def _get_metadata(file: h5py.File, patient_view_key: str, *metadata_tags: str) -> List[np.ndarray]:
         """Fetches the requested metadata for a specific patient/view dataset from the HDF5 file.
 
@@ -416,7 +418,7 @@ class Camus(VisionDataset):
             Attribute values for each tag passed in the parameters.
         """
         patient_view = file[patient_view_key]
-        return [patient_view.attrs[attr_tag] for attr_tag in metadata_tags][0]
+        return [patient_view.attrs[attr_tag] for attr_tag in metadata_tags]
 
 
 if __name__ == "__main__":
@@ -425,7 +427,7 @@ if __name__ == "__main__":
 
     from matplotlib import pyplot as plt
 
-    from vital.data.camus.config import View
+    from crisp_uncertainty.data.camus.config import View
 
     args = ArgumentParser(add_help=False)
     args.add_argument("path", type=str)
