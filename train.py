@@ -31,7 +31,7 @@ if __name__ == '__main__':
     experiment_name = "experiment-" + datetime.datetime.now().strftime("%d-%m-%y-%H-%M")
     log_dir = os.path.join("log", experiment_name)
 
-    callbacks = [EarlyStopping(patience=100), ModelCheckpoint(monitor="val_loss")]
+    callbacks = [EarlyStopping(patience=100, monitor="val_loss"), ModelCheckpoint(monitor="val_loss")]
     logger = WandbLogger(name=experiment_name, project="CRISP", offline=False, save_dir=log_dir)
 
     if cfg.ckpt_path:

@@ -9,11 +9,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from matplotlib import pyplot as plt
 from pytorch_lightning import seed_everything
-from pytorch_lightning.loggers import CometLogger
+from pytorch_lightning.loggers import CometLogger, TensorBoardLogger, WandbLogger
 from scipy.stats import multivariate_normal
 from torch import Tensor
 from torchmetrics.utilities.data import to_onehot
+from torchvision.utils import make_grid
 from tqdm import tqdm
 from crisp_uncertainty.data.camus.config import CamusTags
 from crisp_uncertainty.data.config import Tags
@@ -78,7 +80,9 @@ class TrainCRISP(CRISP):
 
     def validation_step(self, batch: Any, batch_nb: int):
         self.is_val_step = True
-        return self.trainval_step(batch, batch_nb)
+        result = self.trainval_step(batch, batch_nb)
+        self.log("val_loss", result["loss"])
+        return result
 
     def trainval_step(self, batch: Any, batch_nb: int):
         img, seg = batch[Tags.img], batch[Tags.gt]
@@ -144,10 +148,9 @@ class TrainCRISP(CRISP):
 
             if self.is_val_step and batch_nb == 0:
                 seg_recon = seg_recon.argmax(1) if seg_recon.shape[1] > 1 else torch.sigmoid(seg_recon).round()
-                self.log_images(title='Sample (seg)', num_images=5,
-                                axes_content={'Image': img.cpu().squeeze().numpy(),
-                                              'GT': seg.cpu().squeeze().numpy(),
-                                              'Pred': seg_recon.squeeze().detach().cpu().numpy()})
+                self.log_images(title='Sample (seg)', num_images=5, axes_content={'Image': img.cpu().detach().numpy(),
+                                                                                  'GT': seg.cpu().detach().numpy(),
+                                                                                  'Pred': seg_recon.cpu().detach().numpy()})
 
             loss += seg_vae_loss
 
@@ -176,9 +179,8 @@ class TrainCRISP(CRISP):
             logs.update(img_metrics)
 
             if self.is_val_step and batch_nb == 0:
-                self.log_images(title='Sample (img)', num_images=5,
-                                axes_content={'Image': img.cpu().squeeze().numpy(),
-                                              'Pred': img_recon.squeeze().detach().cpu().numpy()})
+                self.log_images(title='Sample (img)', num_images=5, axes_content={'Image': img.cpu().detach().numpy(),
+                                                                                  'Pred': img_recon.cpu().detach().numpy()})
 
             loss += img_vae_loss
 
@@ -190,6 +192,32 @@ class TrainCRISP(CRISP):
         })
 
         return logs
+
+    def log_images(
+            self, title: str, num_images:int,  axes_content):
+        """Log images to Logger if it is a TensorBoardLogger or CometLogger.
+
+        Args:
+            title: Name of the figure.
+            num_images: Number of images to log.
+            axes_content: Mapping of axis name and image.
+            info: Additional info to be appended to title for each image.
+        """
+        for i in range(num_images):
+            fig, axes = plt.subplots(1, len(axes_content.keys()), squeeze=False)
+            name = f"{title}_{i}"
+            plt.suptitle(name)
+            axes = axes.ravel()
+            for j, (ax_title, img) in enumerate(axes_content.items()):
+                axes[j].imshow(img[i].squeeze())
+                axes[j].set_title(ax_title)
+            fig.canvas.draw()
+            # Now we can save it to a numpy array.
+            plt.draw()
+            image = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            self.trainer.logger.log_image("{}_{}".format(title, i), [image], step=self.current_epoch)
+            plt.close()
 
     def clip_forward(self, image_features, seg_features):
         image_features = self.img_proj(image_features)
@@ -311,10 +339,9 @@ class TrainCRISP(CRISP):
             self.train_set_segs = features["segmentations"]
 
     def on_test_start(self) -> None:  # noqa: D102
-        self.upload_dir = self.log_dir / self.UPLOAD_DIR_NAME
+        self.upload_dir = Path(self.trainer.logger.save_dir) / "upload"
         if not self.upload_dir.exists():
             self.upload_dir.mkdir(parents=True, exist_ok=False)
-
 
     def on_test_epoch_start(self) -> None:
         print("Generate test features")

@@ -36,7 +36,7 @@ class CamusDataModule(pl.LightningDataModule):
         """
         super().__init__()
         self.pin_memory = False
-        self.num_workers = 16
+        self.num_workers = 2
         dataset_path = Path(dataset_path)
         labels = tuple(Label.from_name(str(label)) for label in labels)
         self.max_patients = max_patients

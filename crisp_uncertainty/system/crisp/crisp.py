@@ -5,7 +5,6 @@ import comet_ml  # noqa
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from pytorch_lightning.core.memory import ModelSummary
 from torchmetrics.utilities.data import to_onehot
 from tqdm import tqdm
 from crisp_uncertainty.data.config import Tags
@@ -69,9 +68,6 @@ class CRISP(pl.LightningModule):
             # TODO add regression module for img latent space.
             self.regression_module = nn.Linear(self.hparams.seg_latent_size, 1)
 
-    def summarize(self, *args, **kwargs) -> ModelSummary:
-        # No predefined forward method.
-        pass
 
     def encode_dataset(self, datamodule: VitalDataModule, progress_bar: bool = False):
         """Encodes masks from the train and val sets of a dataset in the latent space learned by an CLIP model.
