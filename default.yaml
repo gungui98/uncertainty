@@ -1,6 +1,6 @@
 
 data:
-    dataset_path: ./camus_.h5
+    dataset_path: ./camus_point.h5
     batch_size: 32
     labels:
       - BG
