@@ -8,6 +8,7 @@ from operator import add
 from pathlib import Path
 from typing import Dict, List, Literal, Sequence, Tuple
 
+import SimpleITK
 import h5py
 import numpy as np
 from PIL.Image import LINEAR
@@ -29,6 +30,26 @@ from vital.utils.image.transform import remove_labels, resize_image
 from vital.utils.logging import configure_logging
 
 logger = logging.getLogger(__name__)
+
+
+def load_mhd(filepath: Path):
+    """Loads a mhd image and returns the image and its metadata.
+
+    Args:
+        filepath: Path to the image.
+
+    Returns:
+        - ([N], H, W), Image array.
+        - Collection of metadata.
+    """
+    # load image and save info
+    image = SimpleITK.ReadImage(str(filepath))
+    info = (image.GetSize(), image.GetOrigin(), image.GetSpacing(), image.GetDirection())
+
+    # create numpy array from the .mhd file and corresponding image
+    im_array = np.squeeze(SimpleITK.GetArrayFromImage(image))
+
+    return im_array, info
 
 
 class CrossValidationDatasetGenerator:
@@ -159,7 +180,8 @@ class CrossValidationDatasetGenerator:
             for view in asdict(View()).values()
             if (self.data / patient_id / self.info_filename_format.format(patient=patient_id, view=view)).exists()
         ]
-        print("available_view", self.data / patient_id / self.info_filename_format.format(patient=patient_id, view="2CH"))
+        print("available_view",
+              self.data / patient_id / self.info_filename_format.format(patient=patient_id, view="2CH"))
         for view in available_views:
             # The order of the instants within a view dataset is chronological: ED -> ES -> ED
             data_x, data_y, info_view, instants = self._get_view_data(patient_id, view)
@@ -258,16 +280,16 @@ class CrossValidationDatasetGenerator:
             - Metadata concerning the sequence.
         """
         patient_folder = self.data / patient_id
-        sequence_fn_template = f"{patient_id}_{view}_sequence{{}}.mhd"
+        sequence_fn_template = f"{patient_id}_{view}_{{}}.mhd"
 
         # Open interpolated segmentations
-        data_x, data_y = [], []
-        sequence, info = load_mhd(patient_folder / sequence_fn_template.format(""))
-        sequence_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("_gt"))
+        ES, info = load_mhd(patient_folder / sequence_fn_template.format("ES"))
+        ED, info = load_mhd(patient_folder / sequence_fn_template.format("ED"))
+        ES_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("ES_gt"))
+        ED_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("ED_gt"))
 
-        for image, segmentation in zip(sequence, sequence_gt):  # For every instant in the sequence
-            data_x.append(image)
-            data_y.append(segmentation)
+        data_x = [ES, ED]
+        data_y = [ES_gt, ED_gt]
 
         info = [item for sublist in info for item in sublist]  # Flatten info
 
@@ -277,8 +299,6 @@ class CrossValidationDatasetGenerator:
 def main():
     """Run the script."""
     from argparse import ArgumentParser
-
-    configure_logging(log_to_console=True, console_level=logging.INFO)
 
     parser = ArgumentParser()
     parser.add_argument(

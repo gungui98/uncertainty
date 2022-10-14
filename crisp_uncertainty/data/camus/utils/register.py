@@ -1,10 +1,10 @@
 import numpy as np
 from skimage.measure import regionprops
 
-from vital.data.camus.config import Label
-from vital.utils.format.numpy import to_categorical
-from vital.utils.image.measure import Measure
-from vital.utils.image.register.affine import AffineRegisteringTransformer, Crop, Rotation, Shift
+from crisp_uncertainty.data.camus.config import Label
+from crisp_uncertainty.utils.format.numpy import to_categorical
+from crisp_uncertainty.utils.image.measure import Measure
+from crisp_uncertainty.utils.image.register.affine import AffineRegisteringTransformer, Crop, Rotation, Shift
 
 
 class CamusRegisteringTransformer(AffineRegisteringTransformer):

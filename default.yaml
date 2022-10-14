@@ -1,6 +1,6 @@
 
 data:
-    dataset_path: ./camus.h5
+    dataset_path: ./camus_.h5
     batch_size: 32
     labels:
       - BG
@@ -29,7 +29,7 @@ model:
 
 num_epoch: 50
 weight_decay: 0.001
-lr: 0.001
+lr: 0.01
 seed: 55
 ckpt_path: null
 weights: null

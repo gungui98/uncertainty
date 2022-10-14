@@ -435,7 +435,11 @@ if __name__ == "__main__":
     params = args.parse_args()
 
     ds = Camus(Path(params.path), image_set=Subset.TRAIN, predict=params.predict, fold=5, data_augmentation='pixel')
-
+    val_ds = Camus(Path(params.path), image_set=Subset.TEST, predict=params.predict, fold=5, data_augmentation='pixel')
+    test_ds = Camus(Path(params.path), image_set=Subset.VAL, predict=params.predict, fold=5, data_augmentation='pixel')
+    print("length", len(ds))
+    print("length", len(val_ds))
+    print("length", len(test_ds))
     samples = []
     for sample in ds:
         samples.append(sample[CamusTags.img].squeeze().numpy())
