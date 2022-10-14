@@ -64,8 +64,6 @@ if __name__ == '__main__':
     model = TrainCRISP(module=module,
                        lr=cfg.lr,
                        weight_decay=cfg.weight_decay,
-                       # train_log_kwargs=cfg.train_log_kwargs,
-                       # val_log_kwargs=cfg.val_log_kwargs,
                        save_samples=os.path.join(log_dir, "sample.pth"),
                        output_distribution=None,
                        cross_entropy_weight=0.1,

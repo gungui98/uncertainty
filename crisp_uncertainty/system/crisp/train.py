@@ -58,6 +58,7 @@ class TrainCRISP(CRISP):
                  decode=True,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.is_val_step = False
         self.save_hyperparameters()
         self.module = module
         if self.hparams.decode_img:
@@ -72,6 +73,14 @@ class TrainCRISP(CRISP):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
     def training_step(self, batch: Any, batch_nb: int):
+        self.is_val_step = False
+        return self.trainval_step(batch, batch_nb)
+
+    def validation_step(self, batch: Any, batch_nb: int):
+        self.is_val_step = True
+        return self.trainval_step(batch, batch_nb)
+
+    def trainval_step(self, batch: Any, batch_nb: int):
         img, seg = batch[Tags.img], batch[Tags.gt]
         if self.trainer.datamodule.data_params.out_shape[0] > 1:
             seg_onehot = to_onehot(seg, num_classes=self.trainer.datamodule.data_params.out_shape[0]).float()
