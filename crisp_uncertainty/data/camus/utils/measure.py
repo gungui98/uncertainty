@@ -5,10 +5,9 @@ import numpy as np
 from scipy import ndimage
 from skimage import morphology
 
-from vital.data.camus.config import Label
-from vital.data.config import SemanticStructureId
-from vital.utils.decorators import auto_cast_data, batch_function
-from vital.utils.image.measure import Measure, T
+from crisp_uncertainty.data.camus.config import Label
+from crisp_uncertainty.data.config import SemanticStructureId
+from crisp_uncertainty.utils.image.measure import Measure, T
 
 PixelCoord = Tuple[int, int]
 

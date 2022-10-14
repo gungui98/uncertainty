@@ -1,6 +1,6 @@
-from vital.data.camus.config import Label
-from vital.metrics.evaluate.anatomical_structure import Anatomical2DStructureMetrics
-from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
+from crisp_uncertainty.data.camus.config import Label
+from crisp_uncertainty.metrics.evaluate.anatomical_structure import Anatomical2DStructureMetrics
+from crisp_uncertainty.metrics.evaluate.segmentation import Segmentation2DMetrics
 
 
 class LeftAtriumMetrics(Anatomical2DStructureMetrics):

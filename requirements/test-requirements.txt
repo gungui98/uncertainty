@@ -1,8 +1,0 @@
-pytest
-pytest-pep8
-pytest-cov
-coverage
-hypothesis
-torch-hypothesis
-pytest-mock
-flake8

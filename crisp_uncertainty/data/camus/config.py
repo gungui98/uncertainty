@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Literal, Sequence
 
 import numpy as np
 
-from vital.data.config import DataTag, Tags
+from crisp_uncertainty.data.config import DataTag, Tags
 
 
 class Label(DataTag):

@@ -7,10 +7,9 @@ from crisp_uncertainty.system.uncertainty import UncertaintyMapEvaluationSystem
 from torch import Tensor
 from torch.nn import functional as F
 from torchmetrics.utilities.data import to_onehot
-from vital.data.config import Tags
-from vital.metrics.train.metric import DifferentiableDiceCoefficient
-from vital.systems.segmentation import SegmentationComputationMixin
-from vital.utils.decorators import auto_move_data
+from crisp_uncertainty.data.config import Tags
+from crisp_uncertainty.metrics.train.metric import DifferentiableDiceCoefficient
+from crisp_uncertainty.systems.segmentation import SegmentationComputationMixin
 
 
 class AleatoricUncertainty(UncertaintyMapEvaluationSystem, SegmentationComputationMixin):
@@ -27,7 +26,6 @@ class AleatoricUncertainty(UncertaintyMapEvaluationSystem, SegmentationComputati
         self.is_log_sigma = is_log_sigma
         self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none", apply_activation=False)
 
-    @auto_move_data
     def forward(self, *args, **kwargs):  # noqa: D102
         return self.module(*args, **kwargs)
 

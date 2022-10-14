@@ -4,32 +4,22 @@ from typing import List, Literal, Sequence, Union, Optional
 
 from torch import Tensor
 from torch.utils.data import DataLoader
-from vital.data.camus.config import CamusTags, Label, in_channels, View
-from vital.data.camus.dataset import Camus
-from vital.data.config import DataParameters, Subset
-from vital.data.data_module import VitalDataModule
-from vital.data.mixins import StructuredDataMixin
+import pytorch_lightning as pl
+
+from crisp_uncertainty.data.camus.config import CamusTags, Label, in_channels, View
+from crisp_uncertainty.data.camus.dataset import Camus
+from crisp_uncertainty.data.config import DataParameters, Subset
 
 
-class CamusDataModule(StructuredDataMixin, VitalDataModule):
+class CamusDataModule(pl.LightningDataModule):
     """Implementation of the ``VitalDataModule`` for the CAMUS dataset."""
 
-    def __init__(
-        self,
-        dataset_path: Union[str, Path],
-        labels: Sequence[Union[str, Label]] = Label,
-        fold: int = 5,
-        use_sequence: bool = False,
-        transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
-        transform: Callable[[Tensor], Tensor] = None,
-        target_transform: Callable[[Tensor], Tensor] = None,
-        num_neighbors: int = 0,
-        neighbor_padding: Literal["edge", "wrap"] = "edge",
-        max_patients: Optional[int] = None,
-        views: Sequence[View] = (View.A2C, View.A4C),
-        da: Literal["pixel", "spatial"] = None,
-        **kwargs,
-    ):
+    def __init__(self, dataset_path: Union[str, Path], labels: Sequence[Union[str, Label]] = Label, fold: int = 5,
+                 use_sequence: bool = False, transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
+                 transform: Callable[[Tensor], Tensor] = None, target_transform: Callable[[Tensor], Tensor] = None,
+                 num_neighbors: int = 0, neighbor_padding: Literal["edge", "wrap"] = "edge",
+                 max_patients: Optional[int] = None, views: Sequence[View] = (View.A2C, View.A4C),
+                 da: Literal["pixel", "spatial"] = None, batch_size=16):
         """Initializes class instance.
 
         Args:
@@ -44,10 +34,14 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
                 The options mirror those of the ``mode`` parameter of ``numpy.pad``.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
+        super().__init__()
+        self.pin_memory = False
+        self.num_workers = 16
         dataset_path = Path(dataset_path)
         labels = tuple(Label.from_name(str(label)) for label in labels)
         self.max_patients = max_patients
         self.data_augmentation = da
+        self.batch_size = batch_size
 
         # Infer the shape of the data from the content of the dataset.
         try:
@@ -58,12 +52,12 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             image_shape = Camus(dataset_path, fold, Subset.TEST)[0][CamusTags.gt].shape
 
         output_channels = 1 if len(labels) == 2 else len(labels)
-        super().__init__(
-            data_params=DataParameters(
-                in_shape=(in_channels, *image_shape), out_shape=(output_channels, *image_shape), labels=labels
-            ),
-            **kwargs,
+
+        self.data_params = DataParameters(
+            in_shape=(in_channels, *image_shape), out_shape=(output_channels, *image_shape), labels=labels
         )
+
+        self._dataset = {}
 
         self._dataset_kwargs = {
             "path": dataset_path,
@@ -77,6 +71,23 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             'target_transform': target_transform,
             'views': views
         }
+
+    def dataset(self, subset: Subset = None):
+        """Returns the subsets of the data (e.g. train) and their torch ``Dataset`` handle.
+
+        It should not be called before ``setup``, when the datasets are set.
+
+        Args:
+            subset: Specific subset for which to get the ``Dataset`` handle.
+
+        Returns:
+            If ``subset`` is provided, returns the handle to a specific dataset. Otherwise, returns the mapping between
+            subsets of the data (e.g. train) and their torch ``Dataset`` handle.
+        """
+        if subset is not None:
+            return self._dataset[subset]
+
+        return self._dataset
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         if stage == "fit":

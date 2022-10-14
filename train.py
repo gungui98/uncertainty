@@ -11,9 +11,7 @@ from omegaconf import OmegaConf
 from pytorch_lightning import seed_everything, Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-from vital.data.camus.data_module import CamusDataModule
-from vital.runner import VitalRunner, log
-from vital.utils.serialization import resolve_model_checkpoint_path
+from crisp_uncertainty.data.camus.data_module import CamusDataModule
 
 from crisp_uncertainty.modules.enet import Enet
 from crisp_uncertainty.system.crisp.train import TrainCRISP
@@ -51,7 +49,6 @@ if __name__ == '__main__':
                                  fold=cfg.data.fold,
                                  use_sequence=cfg.data.use_sequence,
                                  views=cfg.data.views,
-                                 pin_memory=False,
                                  )
 
     input_shape = datamodule.data_params.in_shape
@@ -64,10 +61,11 @@ if __name__ == '__main__':
     )
 
     # Instantiate model with the created module.
-    model = TrainCRISP(module=module, data_params=datamodule.data_params, lr=cfg.lr,
+    model = TrainCRISP(module=module,
+                       lr=cfg.lr,
                        weight_decay=cfg.weight_decay,
-                       train_log_kwargs=cfg.train_log_kwargs,
-                       val_log_kwargs=cfg.val_log_kwargs,
+                       # train_log_kwargs=cfg.train_log_kwargs,
+                       # val_log_kwargs=cfg.val_log_kwargs,
                        save_samples=os.path.join(log_dir, "sample.pth"),
                        output_distribution=None,
                        cross_entropy_weight=0.1,
@@ -75,19 +73,20 @@ if __name__ == '__main__':
                        clip_weight=1,
                        reconstruction_weight=1,
                        kl_weight=0.5,
-                       attr_reg= False,
+                       attr_reg=False,
+                       data_params=datamodule.data_params,
                        **cfg.model,
                        **cfg.test_param,
                        )
 
     if cfg.ckpt_path is not None:  # Load pretrained model if checkpoint is provided
-        log.info(f"Loading model from {cfg.ckpt_path}")
+        print(f"Loading model from {cfg.ckpt_path}")
         model = model.load_from_checkpoint(
             str(cfg.ckpt_path), module=module, data_params=datamodule.data_params, strict=False
         )
     elif cfg.weights is not None:
-        weights = resolve_model_checkpoint_path(cfg.weights)
-        log.info(f"Loading weights from {weights}")
+        weights = cfg.weights
+        print(f"Loading weights from {weights}")
         model.load_state_dict(torch.load(weights, map_location=model.device)["state_dict"], strict=cfg.strict)
 
     if cfg.train:

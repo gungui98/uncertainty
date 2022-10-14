@@ -6,7 +6,7 @@ from crisp_uncertainty.evaluation.data_struct import PatientResult
 from crisp_uncertainty.evaluation.patientevaluator import PatientEvaluator
 from crisp_uncertainty.utils.numpy import prob_to_categorical
 from medpy import metric
-from vital.data.config import DataTag
+from crisp_uncertainty.data.config import DataTag
 
 
 class SegmentationMetrics(PatientEvaluator):

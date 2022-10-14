@@ -2,23 +2,34 @@ import itertools
 from typing import Dict, List, Optional
 
 import comet_ml  # noqa
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from pytorch_lightning.core.memory import ModelSummary
 from torchmetrics.utilities.data import to_onehot
 from tqdm import tqdm
-from vital.data.config import Tags
-from vital.data.data_module import VitalDataModule
-from vital.modules.generative.decoder import Decoder
-from vital.modules.generative.encoder import Encoder
-from vital.systems.system import SystemComputationMixin, VitalSystem
+from crisp_uncertainty.data.config import Tags
+from crisp_uncertainty.data.data_module import VitalDataModule
+from crisp_uncertainty.modules.generative.decoder import Decoder
+from crisp_uncertainty.modules.generative.encoder import Encoder
 import numpy as np
 
 
-class CRISP(VitalSystem):
+class CRISP(pl.LightningModule):
     def __init__(
             self,
+            img_latent_size,
+            seg_latent_size,
+            latent_size,
+            img_blocks,
+            seg_blocks,
+            init_channels,
+            decode_img,
+            decode_seg,
+            linear_constraint_weight,
+            linear_constraint_attr,
             seg_channels: int = None,
+            data_params=None,
             *args,
             **kwargs
     ):
@@ -29,7 +40,6 @@ class CRISP(VitalSystem):
         img_channels = self.hparams.data_params.in_shape[0]
         self.seg_channels = seg_channels or self.hparams.data_params.out_shape[0]
 
-
         self.img_encoder = Encoder(input_shape, img_channels, self.hparams.img_blocks, self.hparams.init_channels,
                                    self.hparams.img_latent_size, use_batchnorm=True)
         self.seg_encoder = Encoder(input_shape, self.seg_channels, self.hparams.seg_blocks, self.hparams.init_channels,
@@ -38,7 +48,8 @@ class CRISP(VitalSystem):
             self.img_decoder = Decoder(input_shape, img_channels, self.hparams.img_blocks, self.hparams.init_channels,
                                        self.hparams.img_latent_size, use_batchnorm=True)
         if self.hparams.decode_seg:
-            self.seg_decoder = Decoder(input_shape, self.seg_channels, self.hparams.seg_blocks, self.hparams.init_channels,
+            self.seg_decoder = Decoder(input_shape, self.seg_channels, self.hparams.seg_blocks,
+                                       self.hparams.init_channels,
                                        self.hparams.seg_latent_size, use_batchnorm=True)
 
         self.img_proj = nn.Linear(self.hparams.img_latent_size, self.hparams.latent_size)
@@ -111,7 +122,6 @@ class CRISP(VitalSystem):
         dataset_samples = torch.cat(dataset_samples).numpy()
         return dataset_samples
 
-
     def decode(self, encoding: np.ndarray) -> np.ndarray:
         """Decodes a sample, or batch of samples, from the latent space to the output space.
 
@@ -128,9 +138,7 @@ class CRISP(VitalSystem):
             encoding = encoding[None, :]
         encoding_tensor = torch.from_numpy(encoding)
         decoded_sample = self.seg_decoder(encoding_tensor)
-        decoded_sample = decoded_sample.argmax(1) if decoded_sample.shape[1] > 1 else torch.sigmoid(decoded_sample).round()
+        decoded_sample = decoded_sample.argmax(1) if decoded_sample.shape[1] > 1 else torch.sigmoid(
+            decoded_sample).round()
 
         return decoded_sample.squeeze().cpu().detach().numpy()
-
-
-

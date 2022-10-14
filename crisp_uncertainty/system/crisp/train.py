@@ -1,34 +1,62 @@
 import math
 import random
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 import os
 
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from pytorch_lightning import seed_everything
+from pytorch_lightning.loggers import CometLogger
 from scipy.stats import multivariate_normal
 from torch import Tensor
 from torchmetrics.utilities.data import to_onehot
 from tqdm import tqdm
-from vital.data.camus.config import CamusTags
-from vital.data.config import Tags
-from vital.metrics.train.metric import DifferentiableDiceCoefficient
-from vital.systems.computation import TrainValComputationMixin
+from crisp_uncertainty.data.camus.config import CamusTags
+from crisp_uncertainty.data.config import Tags
+from crisp_uncertainty.evaluation.datasetevaluator import DiceErrorCorrelation, ThresholdedDice, ThresholdErrorOverlap
+from crisp_uncertainty.evaluation.segmentation.metrics import SegmentationMetrics
+from crisp_uncertainty.evaluation.uncertainty.calibration import PixelCalibration, SampleCalibration, PatientCalibration
+from crisp_uncertainty.evaluation.uncertainty.correlation import Correlation
+from crisp_uncertainty.evaluation.uncertainty.distribution import Distribution
+from crisp_uncertainty.evaluation.uncertainty.mutual_information import UncertaintyErrorMutualInfo
+from crisp_uncertainty.evaluation.uncertainty.stats import Stats
+from crisp_uncertainty.evaluation.uncertainty.successerrorhistogram import SuccessErrorHist
+from crisp_uncertainty.evaluation.uncertainty.vis import UncertaintyVisualization
+from crisp_uncertainty.metrics.train.metric import DifferentiableDiceCoefficient
 
-from crisp_uncertainty.evaluation.data_struct import ViewResult
+from crisp_uncertainty.evaluation.data_struct import ViewResult, PatientResult
 from crisp_uncertainty.evaluation.uncertainty.overlap import UncertaintyErrorOverlap
 from crisp_uncertainty.system.crisp.crisp import CRISP
-from vital.data.camus.data_struct import ViewData
+from crisp_uncertainty.data.camus.data_struct import ViewData, PatientData
 
-from crisp_uncertainty.system.uncertainty import UncertaintyEvaluationSystem
+from crisp_uncertainty.utils.metrics import Dice
 
 
-class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
+class TrainCRISP(CRISP):
 
-    def __init__(self, module: nn.Module, *args, **kwargs):
+    def __init__(self, module: nn.Module,
+                 lr,
+                 weight_decay,
+                 save_samples,
+                 output_distribution=None,
+                 cross_entropy_weight=0.1,
+                 dice_weight=1,
+                 clip_weight=1,
+                 reconstruction_weight=1,
+                 kl_weight=0.5,
+                 attr_reg=False,
+
+                 variance_factor=-1,
+                 num_samples=150,
+                 uncertainty_threshold=0.25,
+                 samples_path=None,
+                 iterations=1,
+                 decode=True,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.save_hyperparameters()
         self.module = module
@@ -40,7 +68,10 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
 
         self.train_set_features = None
 
-    def trainval_step(self, batch: Any, batch_nb: int):
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+
+    def training_step(self, batch: Any, batch_nb: int):
         img, seg = batch[Tags.img], batch[Tags.gt]
         if self.trainer.datamodule.data_params.out_shape[0] > 1:
             seg_onehot = to_onehot(seg, num_classes=self.trainer.datamodule.data_params.out_shape[0]).float()
@@ -270,6 +301,12 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
             self.train_set_features = features["features"]
             self.train_set_segs = features["segmentations"]
 
+    def on_test_start(self) -> None:  # noqa: D102
+        self.upload_dir = self.log_dir / self.UPLOAD_DIR_NAME
+        if not self.upload_dir.exists():
+            self.upload_dir.mkdir(parents=True, exist_ok=False)
+
+
     def on_test_epoch_start(self) -> None:
         print("Generate test features")
 
@@ -286,6 +323,80 @@ class TrainCRISP(CRISP, TrainValComputationMixin, UncertaintyEvaluationSystem):
         self.log('best_uncertainty_threshold', self.uncertainty_threshold)
 
         seed_everything(0, workers=True)
+
+    def test_epoch_end(self, outputs: List[PatientResult]) -> None:
+        """Aggregates results.
+
+        Args:
+            outputs: List of results for every patient.
+        """
+        patient_evaluators = [
+            SegmentationMetrics(labels=self.hparams.data_params.labels, upload_dir=self.upload_dir),
+            Correlation(Dice(labels=self.hparams.data_params.labels), upload_dir=self.upload_dir),
+            PixelCalibration(upload_dir=self.upload_dir),
+            SampleCalibration(accuracy_fn=Dice(labels=self.hparams.data_params.labels), upload_dir=self.upload_dir),
+            UncertaintyErrorOverlap(uncertainty_threshold=self.uncertainty_threshold, upload_dir=self.upload_dir),
+            Stats(uncertainty_threshold=self.uncertainty_threshold, upload_dir=self.upload_dir),
+            Distribution(upload_dir=self.upload_dir),
+            UncertaintyVisualization(
+                uncertainty_threshold=self.uncertainty_threshold, nb_figures=50, upload_dir=self.upload_dir
+            ),
+            SuccessErrorHist(upload_dir=self.upload_dir),
+            PatientCalibration(upload_dir=self.upload_dir),
+            UncertaintyErrorMutualInfo(upload_dir=self.upload_dir)
+        ]
+
+        dataset_evaluators = [
+            DiceErrorCorrelation(upload_dir=self.upload_dir),
+            ThresholdedDice(upload_dir=self.upload_dir),
+            ThresholdErrorOverlap()]
+
+        metrics = {}
+        patient_metrics = []
+        for evaluator in patient_evaluators:
+            print(f"Generating results with {evaluator.__class__.__name__}...")
+            try:
+                evaluator_metrics, evaluator_patient_metrics = evaluator(outputs)
+                patient_metrics.append(evaluator_patient_metrics)
+                metrics.update(evaluator_metrics)
+            except Exception as e:
+                print(f"Failed with exception {e}")
+
+        patient_metrics = pd.concat([pd.DataFrame(m).T for m in patient_metrics], axis=1)
+
+        patient_metrics.to_csv(self.upload_dir / "patient_metrics.csv")
+
+        for evaluator in dataset_evaluators:
+            print(f"Generating results with {evaluator.__class__.__name__}...")
+            try:
+                evaluator_metrics = evaluator(patient_metrics)
+                metrics.update(evaluator_metrics)
+            except Exception as e:
+                print(f"Failed with exception {e}")
+
+        if isinstance(self.trainer.logger, CometLogger):
+            self.trainer.logger.experiment.log_asset_folder(str(self.upload_dir), log_file_name=False)
+
+        metrics = {f'test_{k}': v for k, v in metrics.items()}
+        self.log_dict(metrics)
+
+    def test_step(self, batch: PatientData, batch_idx: int):
+        """Performs test-time inference for a patient and saves the results to an HDF5 file."""
+        return self.compute_patient_uncertainty(batch)
+
+    def compute_patient_uncertainty(self, batch: PatientData) -> PatientResult:
+        """Computes the uncertainty for one patient.
+
+        Args:
+            batch: data for one patient including image, groundtruth and other information.
+
+        Returns:
+            PatientResult struct containing uncertainty prediction
+        """
+        patient_res = PatientResult(id=batch.id)
+        for view, data in batch.views.items():
+            patient_res.views[view] = self.compute_view_uncertainty(view, data)
+        return patient_res
 
     def compute_view_uncertainty(self, view: str, data: ViewData) -> ViewResult:
         # pred = self.module(data.img_proc.to(self.device))

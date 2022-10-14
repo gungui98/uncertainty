@@ -5,7 +5,7 @@ from crisp_uncertainty.evaluation.data_struct import PatientResult
 from crisp_uncertainty.evaluation.patientevaluator import PatientEvaluator
 from crisp_uncertainty.utils.numpy import prob_to_categorical
 from matplotlib import pyplot as plt
-from vital.data.camus.config import Label
+from crisp_uncertainty.data.camus.config import Label
 
 
 class Distribution(PatientEvaluator):

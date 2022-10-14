@@ -10,13 +10,10 @@ import torch
 import torchvision
 from torch import Tensor
 from torchvision.datasets import VisionDataset
-from vital.data.camus.config import CamusTags, Label, View
-from vital.data.camus.data_struct import PatientData, ViewData
-from vital.data.camus.utils.measure import EchoMeasure
-from vital.data.camus.utils.register import CamusRegisteringTransformer
-from vital.data.config import Subset
-from vital.utils.decorators import squeeze
-from vital.utils.image.transform import remove_labels, segmentation_to_tensor
+from crisp_uncertainty.data.camus.config import CamusTags, Label, View
+from crisp_uncertainty.data.camus.data_struct import PatientData, ViewData
+from crisp_uncertainty.data.config import Subset
+from crisp_uncertainty.utils.transform import remove_labels, segmentation_to_tensor
 
 ItemId = Tuple[str, int]
 InstantItem = Dict[str, Union[str, Tensor]]
@@ -27,21 +24,21 @@ class Camus(VisionDataset):
     """Implementation of torchvision's ``VisionDataset`` for the CAMUS dataset."""
 
     def __init__(
-        self,
-        path: Path,
-        fold: int,
-        image_set: Subset,
-        labels: Sequence[Label] = Label,
-        use_sequence: bool = False,
-        predict: bool = False,
-        neighbors: Union[int, Sequence[int]] = 0,
-        neighbor_padding: Literal["edge", "wrap"] = "edge",
-        transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
-        transform: Callable[[Tensor], Tensor] = None,
-        target_transform: Callable[[Tensor], Tensor] = None,
-        max_patients: Optional[int] = None,
-        views: Sequence[View] = (View.A2C, View.A4C),
-        data_augmentation: Literal["pixel", "spatial"] = None,
+            self,
+            path: Path,
+            fold: int,
+            image_set: Subset,
+            labels: Sequence[Label] = Label,
+            use_sequence: bool = False,
+            predict: bool = False,
+            neighbors: Union[int, Sequence[int]] = 0,
+            neighbor_padding: Literal["edge", "wrap"] = "edge",
+            transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
+            transform: Callable[[Tensor], Tensor] = None,
+            target_transform: Callable[[Tensor], Tensor] = None,
+            max_patients: Optional[int] = None,
+            views: Sequence[View] = (View.A2C, View.A4C),
+            data_augmentation: Literal["pixel", "spatial"] = None,
     ):
         """Initializes class instance.
 
@@ -164,7 +161,8 @@ class Camus(VisionDataset):
             ]
             groups = groups[:self.max_patients] if self.max_patients is not None else groups
             if level == "view":
-                groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys() if view in self.views]
+                groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys() if
+                          view in self.views]
 
         return groups
 
@@ -180,9 +178,9 @@ class Camus(VisionDataset):
                 view_group.attrs[instant_key] for instant_key in view_group.attrs[CamusTags.instants]
             )
             return (
-                not self.dataset_with_sequence
-                or self.use_sequence
-                or (self.dataset_with_sequence and is_clinically_important_instant)
+                    not self.dataset_with_sequence
+                    or self.use_sequence
+                    or (self.dataset_with_sequence and is_clinically_important_instant)
             )
 
         image_paths = []
@@ -271,7 +269,6 @@ class Camus(VisionDataset):
 
         # Compute attributes on the data
         frame_pos = torch.tensor([instant / len(view_imgs)])
-        gt_attrs = get_segmentation_attributes(gt, self.labels)
 
         if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
             gt[gt != 0] = 1
@@ -283,7 +280,6 @@ class Camus(VisionDataset):
             CamusTags.gt: gt,
             CamusTags.frame_pos: frame_pos,
             CamusTags.voxelspacing: voxelsize,
-            **gt_attrs,
         }
 
     def _get_test_item(self, index: int) -> PatientData:
@@ -345,17 +341,16 @@ class Camus(VisionDataset):
                     proc_gts_tensor = torch.stack(proc_gts_tensor)
 
                     # Extract metadata concerning the registering applied
-                    registering_parameters = None
-                    if self.registered_dataset:
-                        registering_parameters = {
-                            reg_step: Camus._get_metadata(dataset, patient_view_key, reg_step)
-                            for reg_step in CamusRegisteringTransformer.registering_steps
-                        }
+                    # registering_parameters = None
+                    # if self.registered_dataset:
+                    #     registering_parameters = {
+                    #         reg_step: Camus._get_metadata(dataset, patient_view_key, reg_step)
+                    #         for reg_step in CamusRegisteringTransformer.registering_steps
+                    #     }
 
                     # Compute attributes for the sequence
                     attrs = {
                         CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1),
-                        **get_segmentation_attributes(proc_gts_tensor, self.labels),
                     }
 
                     if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
@@ -371,12 +366,11 @@ class Camus(VisionDataset):
                         voxelspacing=info[6:9][::-1],
                         instants=instants,
                         attrs=attrs,
-                        registering=registering_parameters,
+                        # registering=registering_parameters,
                     )
 
         return patient_data
 
-    @squeeze
     def _process_target_data(self, *args: np.ndarray) -> List[np.ndarray]:
         """Processes the target data to only keep requested labels and outputs them in categorical format.
 
@@ -391,10 +385,9 @@ class Camus(VisionDataset):
                 target_data, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value
             ).squeeze()
             for target_data in args
-        ]
+        ][0]
 
     @staticmethod
-    @squeeze
     def _get_data(file: h5py.File, patient_view_key: str, *data_tags: str) -> List[np.ndarray]:
         """Fetches the requested data for a specific patient/view dataset from the HDF5 file.
 
@@ -407,10 +400,10 @@ class Camus(VisionDataset):
             Dataset content for each tag passed in the parameters.
         """
         patient_view = file[patient_view_key]
-        return [patient_view[data_tag][()] for data_tag in data_tags]
+        res = [patient_view[data_tag][()] for data_tag in data_tags]
+        return res
 
     @staticmethod
-    @squeeze
     def _get_metadata(file: h5py.File, patient_view_key: str, *metadata_tags: str) -> List[np.ndarray]:
         """Fetches the requested metadata for a specific patient/view dataset from the HDF5 file.
 
@@ -423,49 +416,7 @@ class Camus(VisionDataset):
             Attribute values for each tag passed in the parameters.
         """
         patient_view = file[patient_view_key]
-        return [patient_view.attrs[attr_tag] for attr_tag in metadata_tags]
-
-
-def get_segmentation_attributes(
-    segmentation: Union[np.ndarray, Tensor], labels: Sequence[Label]
-) -> Dict[str, Union[np.ndarray, Tensor]]:
-    """Measures a variety of attributes on a (batch of) segmentation(s).
-
-    Args:
-        segmentation: ([N], H, W), Segmentation(s) on which to compute a variety of attributes.
-        labels: Labels of the classes included in the segmentation(s).
-
-    Returns:
-        Mapping between the attributes and ([N], 1) arrays of their values for each segmentation in the batch.
-    """
-    attrs = {}
-    if Label.LV in labels:
-        attrs.update(
-            {
-                CamusTags.lv_area: EchoMeasure.structure_area(segmentation, Label.LV.value),
-                CamusTags.lv_orientation: EchoMeasure.structure_orientation(
-                    segmentation, Label.LV.value, reference_orientation=90
-                ),
-            }
-        )
-    if Label.MYO in labels:
-        attrs.update({CamusTags.myo_area: EchoMeasure.structure_area(segmentation, Label.MYO.value)})
-    if Label.LV in labels and Label.MYO in labels:
-        attrs.update(
-            {
-                CamusTags.lv_base_width: EchoMeasure.lv_base_width(segmentation),
-                CamusTags.lv_length: EchoMeasure.lv_length(segmentation),
-                CamusTags.epi_center_x: EchoMeasure.structure_center(
-                    segmentation, [Label.LV.value, Label.MYO.value], axis=1
-                ),
-                CamusTags.epi_center_y: EchoMeasure.structure_center(
-                    segmentation, [Label.LV.value, Label.MYO.value], axis=0
-                ),
-            }
-        )
-    if Label.ATRIUM in labels:
-        attrs.update({CamusTags.atrium_area: EchoMeasure.structure_area(segmentation, Label.ATRIUM.value)})
-    return attrs
+        return [patient_view.attrs[attr_tag] for attr_tag in metadata_tags][0]
 
 
 if __name__ == "__main__":

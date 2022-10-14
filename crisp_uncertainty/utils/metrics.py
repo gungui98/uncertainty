@@ -2,8 +2,8 @@ from typing import List
 
 import numpy as np
 from medpy.metric import dc
-from vital.data.camus.config import Label
-from vital.data.config import DataTag
+from crisp_uncertainty.data.camus.config import Label
+from crisp_uncertainty.data.config import DataTag
 
 
 class Dice:

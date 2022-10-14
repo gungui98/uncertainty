@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+import pytorch_lightning as pl
 from pytorch_lightning import seed_everything
 
 from crisp_uncertainty.evaluation.data_struct import PatientResult, ViewResult
@@ -25,14 +26,13 @@ from crisp_uncertainty.utils.reductions import available_reductions
 from pytorch_lightning.loggers import CometLogger
 from torch import Tensor
 from tqdm import tqdm
-from vital.data.camus.config import Label
-from vital.data.camus.data_struct import PatientData, ViewData
-from vital.data.config import Tags
-from vital.systems.system import SystemEvaluationMixin
-from vital.utils.format.native import prefix
+from crisp_uncertainty.data.camus.config import Label
+from crisp_uncertainty.data.camus.data_struct import PatientData, ViewData
+from crisp_uncertainty.data.config import Tags
 from matplotlib import pyplot as plt
 
-class UncertaintyEvaluationSystem(SystemEvaluationMixin):
+
+class UncertaintyEvaluationSystem(pl.LightningModule):
     """Mixin for handling the evaluation phase for uncertainty and segmentation."""
 
     UPLOAD_DIR_NAME = "upload"
@@ -142,7 +142,7 @@ class UncertaintyEvaluationSystem(SystemEvaluationMixin):
         if isinstance(self.trainer.logger, CometLogger):
             self.trainer.logger.experiment.log_asset_folder(str(self.upload_dir), log_file_name=False)
 
-        metrics = prefix(metrics, "test_")
+        metrics = {f'test_{k}': v for k, v in metrics.items()}
         self.log_dict(metrics)
 
 
@@ -211,7 +211,8 @@ class UncertaintyMapEvaluationSystem(UncertaintyEvaluationSystem):
                 error_sums.append(err.sum(axis=(1, 2)))
                 uncertainties.append(unc)
 
-            errors, uncertainties, error_sums = np.concatenate(errors), np.concatenate(uncertainties), np.concatenate(error_sums)
+            errors, uncertainties, error_sums = np.concatenate(errors), np.concatenate(uncertainties), np.concatenate(
+                error_sums)
 
             all_dices = []
             thresholds = np.arange(0.025, 1, 0.025)

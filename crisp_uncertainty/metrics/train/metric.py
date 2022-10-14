@@ -1,6 +1,6 @@
 from torch import Tensor, nn
 
-from vital.metrics.train.functional import differentiable_dice_score
+from crisp_uncertainty.metrics.train.functional import differentiable_dice_score
 
 
 class DifferentiableDiceCoefficient(nn.Module):
