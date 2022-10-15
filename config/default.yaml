@@ -1,3 +1,6 @@
+hydra:
+ searchpath:
+   - pkg://vital.config
 
 defaults:
   - vital_default # This references default config from vital.config.vital_default.yaml
