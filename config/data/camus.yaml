@@ -1,7 +1,7 @@
 defaults:
   - data
 
-_target_: crisp_uncertainty.data.camus_dm.CamusDataModule
+_target_: crisp_uncertainty.data.camus.CamusDataModule
 
 dataset_path: ${oc.env:CAMUS_DATA_PATH}
 labels:
@@ -9,7 +9,7 @@ labels:
   - LV
   - MYO
   - ATRIUM
-fold: 5
+fold: 1
 use_sequence: False
 max_patients: null
 da: null
