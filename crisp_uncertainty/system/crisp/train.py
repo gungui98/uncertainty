@@ -318,7 +318,6 @@ class TrainCRISP(CRISP):
 
     def on_fit_end(self) -> None:
         # TODO: remove log_dir
-        self.hparams.save_samples = "C:/Users/admin/PycharmProjects/CRISP-uncertainty/log/experiment-14-10-22-16-14/sample.pth"
         if not os.path.exists(self.hparams.save_samples):
             print("Generate train features")
 
