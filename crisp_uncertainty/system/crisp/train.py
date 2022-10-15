@@ -217,7 +217,7 @@ class TrainCRISP(CRISP):
             plt.draw()
             image = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
             image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            self.trainer.logger.log_image("{}_{}".format(title, i), [image], step=self.current_epoch)
+            self.trainer.logger.log_image("{}_{}".format(title, i), [image], step=self.global_step)
             plt.close()
 
     def clip_forward(self, image_features, seg_features):
@@ -318,7 +318,6 @@ class TrainCRISP(CRISP):
 
     def on_fit_end(self) -> None:
         # TODO: remove log_dir
-        self.hparams.save_samples = "log/experiment-15-10-22-19-04/sample.pth"
         if not os.path.exists(self.hparams.save_samples):
             print("Generate train features")
 
@@ -393,12 +392,12 @@ class TrainCRISP(CRISP):
         patient_metrics = []
         for evaluator in patient_evaluators:
             print(f"Generating results with {evaluator.__class__.__name__}...")
-            # try:
-            evaluator_metrics, evaluator_patient_metrics = evaluator(outputs)
-            patient_metrics.append(evaluator_patient_metrics)
-            metrics.update(evaluator_metrics)
-            # except Exception as e:
-            #     print(f"Failed with exception {e}")
+            try:
+                evaluator_metrics, evaluator_patient_metrics = evaluator(outputs)
+                patient_metrics.append(evaluator_patient_metrics)
+                metrics.update(evaluator_metrics)
+            except Exception as e:
+                print(f"Failed with exception {e}")
 
         patient_metrics = pd.concat([pd.DataFrame(m).T for m in patient_metrics], axis=1)
 

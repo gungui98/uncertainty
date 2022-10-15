@@ -27,13 +27,13 @@ model:
   linear_constraint_attr: frame_pos
   seg_channels: null
 
-num_epoch: 3
+num_epoch: 10
 weight_decay: 0.001
 lr: 0.01
 seed: 55
 ckpt_path: null
 weights: null
-train: False
+train: True
 test: True
 
 # test param
