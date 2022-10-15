@@ -1,4 +1,7 @@
-_target_: crisp_uncertainty.modules.unet.UNet
+defaults:
+  - module
+
+_target_: vital.modules.segmentation.unet.UNet
 
 init_channels: 32
 use_batchnorm: True

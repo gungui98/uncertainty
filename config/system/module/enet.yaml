@@ -1,4 +1,7 @@
-_target_: crisp_uncertainty.modules.enet.Enet
+defaults:
+  - module
+
+_target_: vital.modules.segmentation.enet.Enet
 
 init_channels: 16
 dropout: 0.1
