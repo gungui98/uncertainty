@@ -13,6 +13,7 @@ fold: 1
 use_sequence: False
 max_patients: null
 da: null
+pin_memory: False
 
 test_da: null
 views: ['2CH','4CH']
