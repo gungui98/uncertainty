@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import random
 from dataclasses import asdict
 from functools import reduce
 from numbers import Real
@@ -14,7 +15,7 @@ import numpy as np
 from PIL.Image import LINEAR
 from tqdm import tqdm
 
-from vital.data.camus.config import (
+from crisp_uncertainty.data.camus.config import (
     CamusTags,
     FullCycleInstant,
     Instant,
@@ -23,11 +24,9 @@ from vital.data.camus.config import (
     img_save_options,
     seg_save_options,
 )
-from vital.data.camus.utils.register import CamusRegisteringTransformer
-from vital.data.config import Subset
-from vital.utils.image.io import load_mhd
-from vital.utils.image.transform import remove_labels, resize_image
-from vital.utils.logging import configure_logging
+from crisp_uncertainty.data.camus.utils.register import CamusRegisteringTransformer
+from crisp_uncertainty.data.config import Subset
+from crisp_uncertainty.utils.transform import remove_labels, resize_image
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +123,7 @@ class CrossValidationDatasetGenerator:
                 fold_group = cross_validation_group.create_group(f"fold_{fold}")
                 for subset, subset_name_in_data in self._subset_names_in_data.items():
                     fold_subset_patients = self.get_fold_subset_from_file(data, fold, subset_name_in_data)
-                    print("len:", len(fold_subset_patients))
+                    print("len:", len(fold_subset_patients), " for ", subset_name_in_data)
                     fold_group.create_dataset(subset.value, data=np.array(fold_subset_patients, dtype="S"))
 
             # Get a list of all the patients in the dataset
@@ -156,8 +155,9 @@ class CrossValidationDatasetGenerator:
         # # Open text file containing patient ids (one patient id by row)
         # with open(str(list_fn), "r") as f:
         #     patient_ids = [line for line in f.read().splitlines()]
-        patient_ids = glob.glob(str(data / "*"))
-        # patient_ids = sorted(patient_ids)
+        patient_ids = glob.glob(str(data / "*"))[:450]
+        # random.shuffle(patient_ids)
+        patient_ids = sorted(patient_ids)
         train_set = patient_ids[:int(len(patient_ids) * 0.8)]
         test_set = patient_ids[int(len(patient_ids) * 0.8):int(len(patient_ids) * 0.9)]
         val_set = patient_ids[int(len(patient_ids) * 0.9):]
@@ -288,8 +288,8 @@ class CrossValidationDatasetGenerator:
         ES_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("ES_gt"))
         ED_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("ED_gt"))
 
-        data_x = [ES, ED]
-        data_y = [ES_gt, ED_gt]
+        data_x = [ED, ES]
+        data_y = [ED_gt, ES_gt]
 
         info = [item for sublist in info for item in sublist]  # Flatten info
 
@@ -314,8 +314,8 @@ def main():
         "--folds",
         type=int,
         nargs="+",
-        choices=range(1, 11),
-        default=range(1, 11),
+        choices=range(1, 2),
+        default=range(1, 2),
         help="Subfolds of the data to include in the generated dataset",
     )
     parser.add_argument(
