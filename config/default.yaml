@@ -13,7 +13,7 @@ defaults:
 # Set comet project name and workspace
 logger:
   project_name: crisp-miccai2022
-  workspace: thierryjudge
+  workspace: gungui02
 
 seed: 55
 
