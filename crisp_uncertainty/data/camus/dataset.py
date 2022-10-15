@@ -161,15 +161,8 @@ class Camus(VisionDataset):
                 for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set.value}"]
             ]
             groups = groups[:self.max_patients] if self.max_patients is not None else groups
-            if level == "view":
-                filter_group = []
-                for patient in groups:
-                    for view in dataset[patient].keys():
-                        if view in self.views:
-                            filter_group.append(f"{patient}/{view}")
-                # groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys() if
-                #           view in self.views]
-            groups = filter_group
+            groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys() if
+                          view in self.views]
         return groups
 
     def _get_instant_paths(self) -> List[ItemId]:
