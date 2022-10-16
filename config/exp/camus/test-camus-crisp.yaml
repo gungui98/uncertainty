@@ -4,7 +4,6 @@
 defaults:
   - default
   - override /system: crisp/eval
-  - overide /data.use_sequence: True
 
 train: false
 system:
