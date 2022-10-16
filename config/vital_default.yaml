@@ -40,7 +40,7 @@ work_dir: ${hydra:runtime.cwd}
 choices: ${hydra:runtime.choices}
 
 # Save path defines where to save the model. If none, hydra working directory is used.
-sp: null
+sp: "best_model.ckpt"
 
 # If using save_top_k>1 with model_checkpoint, define this regex to extract that desired model from the string name.
 # Make sure model_checkpoint.filename if define appropriately.

@@ -153,8 +153,8 @@ class VitalRunner(ABC):
                 else:  # If checkpoint callback is not used, save current model.
                     trainer.save_checkpoint(best_model_path)
 
-                if isinstance(trainer.logger, CometLogger):
-                    trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
+                    if isinstance(trainer.logger, CometLogger):
+                        trainer.logger.experiment.log_model("best_model", best_model_path)
 
         if cfg.test:
             trainer.test(model, datamodule=datamodule)
@@ -246,7 +246,7 @@ class VitalRunner(ABC):
             Path where to copy the best model checkpoint after training.
         """
         if cfg.get("sp", None):
-            return Path(cfg.sp)  # Return save path from config if available
+            return log_dir / Path(cfg.sp)  # Return save path from config if available
         else:
             module = cfg.choices['system/module']
             name = f"{cfg.choices.data}_{cfg.choices.system}"
