@@ -29,7 +29,7 @@ ckpt: null
 weights: null
 strict: True
 
-train: False
+train: True
 test: True
 
 comet_tags: null # Tags to for comet experiment if CometLogger is used.
