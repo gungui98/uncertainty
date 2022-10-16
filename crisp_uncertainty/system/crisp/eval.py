@@ -32,7 +32,6 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
             self,
             module: nn.Module,
             module_ckpt: str = None,
-            clip_ckpt: str = None,
             variance_factor: float = -1,
             num_samples: int = 25,
             samples_path: str = None,
@@ -45,7 +44,6 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
         Args:
             module: Module to train.
             clip_ckpt: Path to pre-trained crisp model.
-            module_ckpt: Path to pre-trained segmentation model.
             *args: Positional arguments to pass to the parent's constructor.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
@@ -53,8 +51,6 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
         self.save_hyperparameters(ignore='module')
         self.module = module
 
-        checkpoint = torch.load(hydra.utils.to_absolute_path(self.hparams.clip_ckpt))
-        self.load_state_dict(checkpoint["state_dict"], strict=False)
         checkpoint = torch.load(hydra.utils.to_absolute_path(self.hparams.module_ckpt))
         self.load_state_dict(checkpoint["state_dict"], strict=False)
 

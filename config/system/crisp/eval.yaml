@@ -5,7 +5,6 @@ defaults:
   - crisp
 
 module_ckpt: ???
-clip_ckpt: ???
 
 variance_factor: -1
 num_samples: 150
