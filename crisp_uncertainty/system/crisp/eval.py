@@ -60,11 +60,7 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
         Returns:
             name of method
         """
-        module_path = Path(self.hparams.module_ckpt).stem
-        if int(module_path.rpartition('-')[-1]) == int(os.environ.get("PL_GLOBAL_SEED")):
-            module_path = module_path.rpartition('-')[0]
-        return f"CRISP{'*' if self.seg_channels > len(self.hparams.data_params.labels) else ''}" \
-               f"_{module_path}_{self.hparams.num_samples}"
+        return "CRISP Test"
 
     def encode_set(self, dataloader):
         train_set_features = []
