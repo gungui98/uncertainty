@@ -129,7 +129,7 @@ class VitalRunner(ABC):
             if not cfg.trainer.get("fast_dev_run", False):
                 # Copy best model checkpoint to a predictable path + online tracker (if used)
                 best_model_path = VitalRunner._best_model_path(log_dir, cfg)
-                log.info("save best model to", best_model_path)
+                log.info(f"save best model to {str(best_model_path)}")
                 best_model_path.parent.mkdir(parents=True, exist_ok=True)
 
                 if trainer.checkpoint_callback is not None:
