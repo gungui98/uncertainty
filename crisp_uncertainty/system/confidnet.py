@@ -34,7 +34,7 @@ class ConfidNet(UncertaintyMapEvaluationSystem, SegmentationComputationMixin):
                 continue
             param[1].requires_grad = False
 
-    def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:  # noqa: D102
+    def summarize(self, mode):  # noqa: D102
         pass
 
     def get_name(self):
