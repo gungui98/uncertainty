@@ -119,12 +119,12 @@ class UncertaintyEvaluationSystem(SystemEvaluationMixin):
         patient_metrics = []
         for evaluator in patient_evaluators:
             print(f"Generating results with {evaluator.__class__.__name__}...")
-            try:
-                evaluator_metrics, evaluator_patient_metrics = evaluator(outputs)
-                patient_metrics.append(evaluator_patient_metrics)
-                metrics.update(evaluator_metrics)
-            except Exception as e:
-                print(f"Failed with exception {e}")
+            # try:
+            evaluator_metrics, evaluator_patient_metrics = evaluator(outputs)
+            patient_metrics.append(evaluator_patient_metrics)
+            metrics.update(evaluator_metrics)
+            # except Exception as e:
+            #     print(f"Failed with exception {e}")
 
         patient_metrics = pd.concat([pd.DataFrame(m).T for m in patient_metrics], axis=1)
 
@@ -132,11 +132,11 @@ class UncertaintyEvaluationSystem(SystemEvaluationMixin):
 
         for evaluator in dataset_evaluators:
             print(f"Generating results with {evaluator.__class__.__name__}...")
-            try:
-                evaluator_metrics = evaluator(patient_metrics)
-                metrics.update(evaluator_metrics)
-            except Exception as e:
-                print(f"Failed with exception {e}")
+            # try:
+            evaluator_metrics = evaluator(patient_metrics)
+            metrics.update(evaluator_metrics)
+            # except Exception as e:
+            #     print(f"Failed with exception {e}")
 
         if isinstance(self.trainer.logger, CometLogger):
             self.trainer.logger.experiment.log_asset_folder(str(self.upload_dir), log_file_name=False)
