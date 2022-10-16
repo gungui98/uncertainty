@@ -1,33 +1,31 @@
-import random
 from pathlib import Path
 
-import numpy as np
-
-from vital.data.camus.dataset import Camus
-from argparse import ArgumentParser
-
 from vital.data.config import Subset
-from matplotlib import pyplot as plt
-from vital.data.camus.config import View, CamusTags
+
+from vital.data.camus.data_module import CamusDataModule
 
 if __name__ == '__main__':
-    args = ArgumentParser(add_help=False)
-    args.add_argument("path", type=str)
-    args.add_argument("--predict", action="store_true")
-    params = args.parse_args()
-
-    ds = Camus(Path(params.path), image_set=Subset.VAL, predict=params.predict, fold=5, data_augmentation='pixel')
-
+    path = "./camus_point.h5"
+    ds = CamusDataModule(Path(path),
+                         use_sequence=False,
+                         max_patients=None,
+                         image_set=Subset.VAL,
+                         fold=1,
+                         data_augmentation='pixel',
+                         batch_size=32,
+                         num_workers=1,
+                         )
+    ds.setup("test")
     samples = []
-    for sample in ds:
-        samples.append(sample[CamusTags.img].squeeze().numpy())
+    for sample in ds.test_dataloader():
+        print(sample)
 
-    samples = np.array(samples)
-
-    print(samples.min())
-    print(samples.max())
-    print(samples.mean())
-    print(samples.std())
+    # samples = np.array(samples)
+    #
+    # print(samples.min())
+    # print(samples.max())
+    # print(samples.mean())
+    # print(samples.std())
 
     # if params.predict:
     #     patient = ds[random.randint(0, len(ds) - 1)]
