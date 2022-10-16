@@ -481,7 +481,7 @@ if __name__ == "__main__":
     args.add_argument("--predict", action="store_true")
     params = args.parse_args()
 
-    ds = Camus(Path(params.path), image_set=Subset.TRAIN, predict=params.predict, fold=5, data_augmentation='pixel')
+    ds = Camus(Path(params.path), image_set=Subset.VAL, predict=params.predict, fold=5, data_augmentation='pixel')
 
     samples = []
     for sample in ds:
