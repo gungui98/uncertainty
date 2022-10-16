@@ -318,7 +318,7 @@ class Camus(VisionDataset):
                     }
 
                     # If we do not use the whole sequence
-                    if self.dataset_with_sequence and self.use_sequence:
+                    if self.dataset_with_sequence and not self.use_sequence:
                         # Only keep clinically important instants
                         instant_indices = list(instants.values())
                         proc_imgs = proc_imgs[instant_indices]
