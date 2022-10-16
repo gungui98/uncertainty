@@ -8,5 +8,5 @@ defaults:
 train: false
 system:
   clip_ckpt: ${model_path}/${choices.data}${camus_labels:${data.labels}}-crisp-${seed}.ckpt
-  num_samples: 5
+  num_samples: 50
   uncertainty_threshold: 0.3

@@ -1,5 +1,7 @@
+import glob
 import logging
 import os
+import random
 from dataclasses import asdict
 from functools import reduce
 from numbers import Real
@@ -7,6 +9,7 @@ from operator import add
 from pathlib import Path
 from typing import Dict, List, Literal, Sequence, Tuple
 
+import SimpleITK
 import h5py
 import numpy as np
 from PIL.Image import LINEAR
@@ -23,11 +26,29 @@ from vital.data.camus.config import (
 )
 from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
-from vital.utils.image.io import load_mhd
 from vital.utils.image.transform import remove_labels, resize_image
-from vital.utils.logging import configure_logging
 
 logger = logging.getLogger(__name__)
+
+
+def load_mhd(filepath: Path):
+    """Loads a mhd image and returns the image and its metadata.
+
+    Args:
+        filepath: Path to the image.
+
+    Returns:
+        - ([N], H, W), Image array.
+        - Collection of metadata.
+    """
+    # load image and save info
+    image = SimpleITK.ReadImage(str(filepath))
+    info = (image.GetSize(), image.GetOrigin(), image.GetSpacing(), image.GetDirection())
+
+    # create numpy array from the .mhd file and corresponding image
+    im_array = np.squeeze(SimpleITK.GetArrayFromImage(image))
+
+    return im_array, info
 
 
 class CrossValidationDatasetGenerator:
@@ -51,15 +72,15 @@ class CrossValidationDatasetGenerator:
     }
 
     def __call__(
-        self,
-        data: Path,
-        output: Path,
-        folds: Sequence[int] = range(1, 11),
-        target_image_size: Tuple[int, int] = (256, 256),
-        sequence_type: Literal["half_cycle", "full_cycle"] = "half_cycle",
-        sequence: bool = False,
-        register: bool = False,
-        labels: Sequence[Label] = None,
+            self,
+            data: Path,
+            output: Path,
+            folds: Sequence[int] = range(1, 11),
+            target_image_size: Tuple[int, int] = (256, 256),
+            sequence_type: Literal["half_cycle", "full_cycle"] = "half_cycle",
+            sequence: bool = False,
+            register: bool = False,
+            labels: Sequence[Label] = None,
     ) -> None:
         """Organizes the CAMUS data in a single HDF5 file, along with the metadata for cross-validation experiments.
 
@@ -102,6 +123,7 @@ class CrossValidationDatasetGenerator:
                 fold_group = cross_validation_group.create_group(f"fold_{fold}")
                 for subset, subset_name_in_data in self._subset_names_in_data.items():
                     fold_subset_patients = self.get_fold_subset_from_file(data, fold, subset_name_in_data)
+                    print("len:", len(fold_subset_patients), " for ", subset_name_in_data)
                     fold_group.create_dataset(subset.value, data=np.array(fold_subset_patients, dtype="S"))
 
             # Get a list of all the patients in the dataset
@@ -117,7 +139,7 @@ class CrossValidationDatasetGenerator:
 
     @classmethod
     def get_fold_subset_from_file(
-        cls, data: Path, fold: int, subset: Literal["training", "validation", "testing"]
+            cls, data: Path, fold: int, subset: Literal["training", "validation", "testing"]
     ) -> List[str]:
         """Reads patient ids for a subset of a cross-validation configuration.
 
@@ -129,11 +151,21 @@ class CrossValidationDatasetGenerator:
         Returns:
             IDs of the patients that are included in the subset of the fold.
         """
-        list_fn = data / "listSubGroups" / f"subGroup{fold}_{subset}.txt"
-        # Open text file containing patient ids (one patient id by row)
-        with open(str(list_fn), "r") as f:
-            patient_ids = [line for line in f.read().splitlines()]
-        return patient_ids
+        # list_fn = data / "listSubGroups" / f"subGroup{fold}_{subset}.txt"
+        # # Open text file containing patient ids (one patient id by row)
+        # with open(str(list_fn), "r") as f:
+        #     patient_ids = [line for line in f.read().splitlines()]
+        patient_ids = glob.glob(str(data / "*"))[:450]
+        # random.shuffle(patient_ids)
+        patient_ids = sorted(patient_ids)
+        train_set = patient_ids[:int(len(patient_ids) * 0.8)]
+        test_set = patient_ids[int(len(patient_ids) * 0.8):int(len(patient_ids) * 0.9)]
+        val_set = patient_ids[int(len(patient_ids) * 0.9):]
+        if subset == "training":
+            return train_set
+        if subset == "testing":
+            return test_set
+        return val_set
 
     def _write_patient_data(self, patient_group: h5py.Group) -> None:
         """Writes the raw image data of a patient to a designated HDF5 group within the HDF5 file.
@@ -148,6 +180,8 @@ class CrossValidationDatasetGenerator:
             for view in asdict(View()).values()
             if (self.data / patient_id / self.info_filename_format.format(patient=patient_id, view=view)).exists()
         ]
+        print("available_view",
+              self.data / patient_id / self.info_filename_format.format(patient=patient_id, view="2CH"))
         for view in available_views:
             # The order of the instants within a view dataset is chronological: ED -> ES -> ED
             data_x, data_y, info_view, instants = self._get_view_data(patient_id, view)
@@ -223,9 +257,8 @@ class CrossValidationDatasetGenerator:
         if self.flags[CamusTags.full_sequence]:
             data_x, data_y = sequence, sequence_gt
         else:
-            for instant in instants:
-                data_x.append(sequence[instants[instant]])
-                data_y.append(sequence_gt[instants[instant]])
+            data_x.append(sequence[0])
+            data_y.append(sequence_gt[1])
 
             # Update indices of clinically important instants to match the new slicing of the sequences
             instants = {instant_key: idx for idx, instant_key in enumerate(instants)}
@@ -246,16 +279,16 @@ class CrossValidationDatasetGenerator:
             - Metadata concerning the sequence.
         """
         patient_folder = self.data / patient_id
-        sequence_fn_template = f"{patient_id}_{view}_sequence{{}}.mhd"
+        sequence_fn_template = f"{patient_id}_{view}_{{}}.mhd"
 
         # Open interpolated segmentations
-        data_x, data_y = [], []
-        sequence, info = load_mhd(patient_folder / sequence_fn_template.format(""))
-        sequence_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("_gt"))
+        ES, info = load_mhd(patient_folder / sequence_fn_template.format("ES"))
+        ED, info = load_mhd(patient_folder / sequence_fn_template.format("ED"))
+        ES_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("ES_gt"))
+        ED_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("ED_gt"))
 
-        for image, segmentation in zip(sequence, sequence_gt):  # For every instant in the sequence
-            data_x.append(image)
-            data_y.append(segmentation)
+        data_x = [ED, ES]
+        data_y = [ED_gt, ES_gt]
 
         info = [item for sublist in info for item in sublist]  # Flatten info
 
@@ -265,8 +298,6 @@ class CrossValidationDatasetGenerator:
 def main():
     """Run the script."""
     from argparse import ArgumentParser
-
-    configure_logging(log_to_console=True, console_level=logging.INFO)
 
     parser = ArgumentParser()
     parser.add_argument(
@@ -282,8 +313,8 @@ def main():
         "--folds",
         type=int,
         nargs="+",
-        choices=range(1, 11),
-        default=range(1, 11),
+        choices=range(1, 2),
+        default=range(1, 2),
         help="Subfolds of the data to include in the generated dataset",
     )
     parser.add_argument(
@@ -305,7 +336,7 @@ def main():
         "--sequence",
         action="store_true",
         help="Augment the dataset by adding data for the sequence between ED and ES, where the "
-        "groundtruths between ED and ES are interpolated linearly from reference segmentations",
+             "groundtruths between ED and ES are interpolated linearly from reference segmentations",
     )
     parser.add_argument("-r", "--register", action="store_true", help="Apply registering on images and groundtruths")
     parser.add_argument(
@@ -315,7 +346,7 @@ def main():
         nargs="+",
         choices=list(Label),
         help="Labels of the segmentation classes to take into account (including background). "
-        "If None, target all labels included in the data",
+             "If None, target all labels included in the data",
     )
     args = parser.parse_args()
 
