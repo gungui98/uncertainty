@@ -50,8 +50,8 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
         self.save_hyperparameters(ignore='module')
         self.module = module
 
-        # checkpoint = torch.load(hydra.utils.to_absolute_path(self.hparams.module_ckpt))
-        # self.load_state_dict(checkpoint["state_dict"], strict=False)
+        checkpoint = torch.load(hydra.utils.to_absolute_path(self.hparams.module_ckpt))
+        self.load_state_dict(checkpoint["state_dict"], strict=False)
 
     def encode_set(self, dataloader):
         train_set_features = []
