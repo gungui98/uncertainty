@@ -31,7 +31,6 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
     def __init__(
             self,
             module: nn.Module,
-            module_ckpt: str = None,
             variance_factor: float = -1,
             num_samples: int = 25,
             samples_path: str = None,
@@ -51,8 +50,8 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
         self.save_hyperparameters(ignore='module')
         self.module = module
 
-        checkpoint = torch.load(hydra.utils.to_absolute_path(self.hparams.module_ckpt))
-        self.load_state_dict(checkpoint["state_dict"], strict=False)
+        # checkpoint = torch.load(hydra.utils.to_absolute_path(self.hparams.module_ckpt))
+        # self.load_state_dict(checkpoint["state_dict"], strict=False)
 
     def get_name(self):
         """Get name of current method for saving.
@@ -61,20 +60,6 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
             name of method
         """
         return "CRISP Test"
-
-    def encode_set(self, dataloader):
-        train_set_features = []
-        train_set_segs = []
-        for batch in tqdm(iter(dataloader)):
-            seg = batch[Tags.gt].to(self.device)
-            train_set_segs.append(seg.cpu())
-            if self.hparams.data_params.out_shape[0] > 1:
-                seg = to_onehot(seg, num_classes=self.hparams.data_params.out_shape[0]).float()
-            else:
-                seg = seg.unsqueeze(1).float()
-            seg_mu = self.seg_encoder(seg)
-            train_set_features.append(seg_mu.detach().cpu())
-        return train_set_features, train_set_segs
 
     def on_test_epoch_start(self) -> None:
         print("Generate train features")
@@ -98,14 +83,13 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
                             'segmentations': self.train_set_segs}, self.hparams.save_samples)
                 exit(0)
         else:
-            print("load data from", self.hparams.samples_path )
+            print("load data from", self.hparams.samples_path)
             samples = torch.load(self.hparams.samples_path)
             self.train_set_features = samples['features']
             self.train_set_segs = samples['segmentations']
 
         print("Latent features", self.train_set_features.shape)
         print("Latent segmentations", self.train_set_segs.shape)
-
 
         self.uncertainty_threshold = self.find_threshold(datamodule)
         self.log('best_uncertainty_threshold', self.uncertainty_threshold)
