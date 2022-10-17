@@ -99,9 +99,12 @@ class VitalRunner(ABC):
                 assert len(data_shape) == len(system_shape)
                 return tuple([sys_dim or data_dim for sys_dim, data_dim in zip(system_shape, data_shape)])
             return data_shape
-
-        input_shape = concat_shapes(cfg.system.module.input_shape, datamodule.data_params.in_shape)
-        output_shape = concat_shapes(cfg.system.module.output_shape, datamodule.data_params.out_shape)
+        try:
+            input_shape = concat_shapes(cfg.system.module.input_shape, datamodule.data_params.in_shape)
+            output_shape = concat_shapes(cfg.system.module.output_shape, datamodule.data_params.out_shape)
+        except:
+            input_shape = concat_shapes(None, datamodule.data_params.in_shape)
+            output_shape = concat_shapes(None, datamodule.data_params.out_shape)
 
         # Instantiate module with respect to datamodule's data params.
         module: nn.Module = hydra.utils.instantiate(
@@ -157,6 +160,7 @@ class VitalRunner(ABC):
                         trainer.logger.experiment.log_model("best_model", best_model_path)
 
         if cfg.test:
+            datamodule.setup("test")
             trainer.test(model, datamodule=datamodule)
 
     @classmethod

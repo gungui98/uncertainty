@@ -29,6 +29,9 @@ class TrainCRISP(CRISP, TrainValComputationMixin, EvalCRISP):
         if self.hparams.decode_seg:
             self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
 
+    def summarize(self, max_depth):
+        pass
+
     def trainval_step(self, batch: Any, batch_nb: int):
         img, seg = batch[Tags.img], batch[Tags.gt]
         if self.trainer.datamodule.data_params.out_shape[0] > 1:
