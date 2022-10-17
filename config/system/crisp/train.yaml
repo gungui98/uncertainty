@@ -14,3 +14,10 @@ kl_weight: 0.5
 interpolation_augmentation_samples: 0
 attr_reg: False
 save_samples: null
+
+variance_factor: -1
+num_samples: 150
+uncertainty_threshold: 0.25
+samples_path: null
+iterations: 1
+decode: true

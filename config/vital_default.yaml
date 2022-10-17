@@ -29,9 +29,6 @@ ckpt: null
 weights: null
 strict: True
 
-train: True
-test: True
-
 comet_tags: null # Tags to for comet experiment if CometLogger is used.
 
 # Copy of original working directory before hydra changes it. Useful for paths.

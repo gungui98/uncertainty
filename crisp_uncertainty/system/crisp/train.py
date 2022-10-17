@@ -14,9 +14,10 @@ from vital.metrics.train.metric import DifferentiableDiceCoefficient
 from vital.systems.computation import TrainValComputationMixin
 
 from crisp_uncertainty.system.crisp.crisp import CRISP
+from crisp_uncertainty.system.crisp.eval import EvalCRISP
 
 
-class TrainCRISP(CRISP, TrainValComputationMixin):
+class TrainCRISP(CRISP, TrainValComputationMixin, EvalCRISP):
 
     def __init__(self, save_samples, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -244,21 +245,3 @@ class TrainCRISP(CRISP, TrainValComputationMixin):
             seg_mu = self.seg_encoder(seg)
             train_set_features.append(seg_mu.detach().cpu())
         return train_set_features, train_set_segs
-
-    def on_fit_end(self) -> None:
-        if self.hparams.save_samples:
-
-            print("Generate train features")
-
-            datamodule = self.trainer.datamodule
-
-            train_set_features, train_set_segs = self.encode_set(datamodule.train_dataloader())
-            val_set_features, val_set_segs = self.encode_set(datamodule.val_dataloader())
-            train_set_features.extend(val_set_features)
-            train_set_segs.extend(val_set_segs)
-
-            self.train_set_features = torch.cat(train_set_features)
-            self.train_set_segs = torch.cat(train_set_segs)
-            Path(self.hparams.save_samples).parent.mkdir(exist_ok=True)
-            torch.save({'features': self.train_set_features,
-                        'segmentations': self.train_set_segs}, self.hparams.save_samples)
