@@ -1,6 +1,7 @@
 import math
 import os
 from pathlib import Path
+from random import random
 from typing import Tuple
 
 import comet_ml  # noqa
@@ -25,7 +26,7 @@ from matplotlib import pyplot as plt
 from crisp_uncertainty.utils.numpy import prob_to_categorical
 
 
-class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
+class EvalCRISP(UncertaintyEvaluationSystem):
     module: nn.Module
 
     def __init__(

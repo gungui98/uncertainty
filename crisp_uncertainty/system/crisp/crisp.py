@@ -47,7 +47,6 @@ class CRISP(SystemComputationMixin):
         img_channels = self.hparams.data_params.in_shape[0]
         self.seg_channels = seg_channels or self.hparams.data_params.out_shape[0]
 
-
         self.img_encoder = Encoder(input_shape, img_channels, self.hparams.img_blocks, self.hparams.init_channels,
                                    self.hparams.img_latent_size, output_distribution=self.hparams.output_distribution,
                                    use_batchnorm=True)
@@ -58,7 +57,8 @@ class CRISP(SystemComputationMixin):
             self.img_decoder = Decoder(input_shape, img_channels, self.hparams.img_blocks, self.hparams.init_channels,
                                        self.hparams.img_latent_size, use_batchnorm=True)
         if self.hparams.decode_seg:
-            self.seg_decoder = Decoder(input_shape, self.seg_channels, self.hparams.seg_blocks, self.hparams.init_channels,
+            self.seg_decoder = Decoder(input_shape, self.seg_channels, self.hparams.seg_blocks,
+                                       self.hparams.init_channels,
                                        self.hparams.seg_latent_size, use_batchnorm=True)
 
         self.img_proj = nn.Linear(self.hparams.img_latent_size, self.hparams.latent_size)
@@ -78,7 +78,7 @@ class CRISP(SystemComputationMixin):
             # TODO add regression module for img latent space.
             self.regression_module = nn.Linear(self.hparams.seg_latent_size, 1)
 
-    def summarize(self, mode):
+    def summarize(self, *argv, **kwargs):
         # No predefined forward method.
         pass
 
@@ -131,7 +131,6 @@ class CRISP(SystemComputationMixin):
         dataset_samples = torch.cat(dataset_samples).numpy()
         return dataset_samples
 
-
     def decode(self, encoding: np.ndarray) -> np.ndarray:
         """Decodes a sample, or batch of samples, from the latent space to the output space.
 
@@ -148,9 +147,23 @@ class CRISP(SystemComputationMixin):
             encoding = encoding[None, :]
         encoding_tensor = torch.from_numpy(encoding)
         decoded_sample = self.seg_decoder(encoding_tensor)
-        decoded_sample = decoded_sample.argmax(1) if decoded_sample.shape[1] > 1 else torch.sigmoid(decoded_sample).round()
+        decoded_sample = decoded_sample.argmax(1) if decoded_sample.shape[1] > 1 else torch.sigmoid(
+            decoded_sample).round()
 
         return decoded_sample.squeeze().cpu().detach().numpy()
 
+    def clip_forward(self, image_features, seg_features):
+        image_features = self.img_proj(image_features)
+        seg_features = self.seg_proj(seg_features)
 
+        # normalized features
+        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        seg_features = seg_features / seg_features.norm(dim=-1, keepdim=True)
 
+        # cosine similarity as logits
+        logit_scale = self.logit_scale.exp()
+        logits_per_image = logit_scale * image_features @ seg_features.t()
+        logits_per_seg = logit_scale * seg_features @ image_features.t()
+
+        # shape = [global_batch_size, global_batch_size]
+        return logits_per_image, logits_per_seg

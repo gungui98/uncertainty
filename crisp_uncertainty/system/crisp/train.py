@@ -14,9 +14,10 @@ from vital.metrics.train.metric import DifferentiableDiceCoefficient
 from vital.systems.computation import TrainValComputationMixin
 
 from crisp_uncertainty.system.crisp.crisp import CRISP
+from crisp_uncertainty.system.crisp.eval import EvalCRISP
 
 
-class TrainCRISP(CRISP, TrainValComputationMixin):
+class TrainCRISP(CRISP, TrainValComputationMixin, EvalCRISP):
 
     def __init__(self, save_samples, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -28,7 +29,7 @@ class TrainCRISP(CRISP, TrainValComputationMixin):
         if self.hparams.decode_seg:
             self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
 
-    def summarize(self, max_depth):
+    def summarize(self, *args, **kwargs):
         pass
 
     def trainval_step(self, batch: Any, batch_nb: int):
@@ -151,22 +152,6 @@ class TrainCRISP(CRISP, TrainValComputationMixin):
         })
 
         return logs
-
-    def clip_forward(self, image_features, seg_features):
-        image_features = self.img_proj(image_features)
-        seg_features = self.seg_proj(seg_features)
-
-        # normalized features
-        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-        seg_features = seg_features / seg_features.norm(dim=-1, keepdim=True)
-
-        # cosine similarity as logits
-        logit_scale = self.logit_scale.exp()
-        logits_per_image = logit_scale * image_features @ seg_features.t()
-        logits_per_seg = logit_scale * seg_features @ image_features.t()
-
-        # shape = [global_batch_size, global_batch_size]
-        return logits_per_image, logits_per_seg
 
     @staticmethod
     def reparameterize(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:

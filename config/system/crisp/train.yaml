@@ -4,8 +4,6 @@ _target_: crisp_uncertainty.system.crisp.train.TrainCRISP
 defaults:
   - crisp
 
-module: null # No module for training crisp, module (encoder/decoder) is created in init method.
-
 cross_entropy_weight:  0.1
 dice_weight:  1
 clip_weight:  1
@@ -14,6 +12,8 @@ kl_weight: 0.5
 interpolation_augmentation_samples: 0
 attr_reg: False
 save_samples: null
+
+module_ckpt: ???
 
 variance_factor: -1
 num_samples: 150
