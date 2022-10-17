@@ -14,10 +14,9 @@ from vital.metrics.train.metric import DifferentiableDiceCoefficient
 from vital.systems.computation import TrainValComputationMixin
 
 from crisp_uncertainty.system.crisp.crisp import CRISP
-from crisp_uncertainty.system.crisp.eval import EvalCRISP
 
 
-class TrainCRISP(CRISP, TrainValComputationMixin, EvalCRISP):
+class TrainCRISP(CRISP, TrainValComputationMixin):
 
     def __init__(self, save_samples, *args, **kwargs):
         super().__init__(*args, **kwargs)
