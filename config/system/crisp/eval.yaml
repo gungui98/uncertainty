@@ -9,6 +9,6 @@ module_ckpt: ???
 variance_factor: -1
 num_samples: 150
 uncertainty_threshold: 0.25
-samples_path: "samples.pth"
+samples_path: null
 iterations: 1
 decode: true
