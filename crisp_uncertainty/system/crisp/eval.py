@@ -98,6 +98,7 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
                             'segmentations': self.train_set_segs}, self.hparams.save_samples)
                 exit(0)
         else:
+            print("load data from", self.hparams.samples_path )
             samples = torch.load(self.hparams.samples_path)
             self.train_set_features = samples['features']
             self.train_set_segs = samples['segmentations']
@@ -179,11 +180,9 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
         x_hat = torch.mean(sample_features, dim=0, keepdim=True)
         R_hat = torch.norm(x_hat)
         mu = x_hat / R_hat
-        kappa = R_hat * (8 - R_hat**2) / 1 - R_hat**2
-        h0 = kappa**(-1/2) * (40 * torch.sqrt(torch.tensor(math.pi)) * sample_features.shape[0])**(-1/5)
+        kappa = R_hat * (8 - R_hat ** 2) / 1 - R_hat ** 2
+        h0 = kappa ** (-1 / 2) * (40 * torch.sqrt(torch.tensor(math.pi)) * sample_features.shape[0]) ** (-1 / 5)
         weights = torch.exp(1 / h0 * (image_features @ sample_features.t() - 1)).squeeze().cpu()
-
-
 
         # Get indices of samples higher than the prediction logits
         sorted_indices = torch.argsort(sample_logits, dim=0, descending=True)
@@ -211,7 +210,6 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
         if self.seg_channels > 1:
             labels_values = [label.value for label in self.hparams.data_params.labels if label.value != 0]
             uncertainty_map = uncertainty_map[labels_values, ...]
-
 
         if uncertainty_map.ndim > 2:
             uncertainty_map = uncertainty_map.sum(0)
@@ -245,7 +243,8 @@ class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
                     uncertainties.append(unc[None])
                     error_sums.append(err.sum())
 
-            errors, uncertainties, error_sums = np.concatenate(errors), np.concatenate(uncertainties), np.array(error_sums)
+            errors, uncertainties, error_sums = np.concatenate(errors), np.concatenate(uncertainties), np.array(
+                error_sums)
             print(errors.shape)
             print(uncertainties.shape)
             print(error_sums.shape)

@@ -39,7 +39,6 @@ class UncertaintyVisualization(PatientEvaluator):
         """
         saved_data = {}
         for patient in results:
-            patient.id = os.path.basename(patient.id)
             if self.count < self.nb_figures:
                 for view, data in patient.views.items():
                     for instant, i in data.instants.items():

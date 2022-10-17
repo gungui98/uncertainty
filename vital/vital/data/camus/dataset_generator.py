@@ -135,7 +135,7 @@ class CrossValidationDatasetGenerator:
 
             # Write the raw image data for each patient in the dataset
             for patient_id in tqdm(patient_ids, unit="patient", desc=f"Writing patient data to HDF5 file: {output}"):
-                self._write_patient_data(dataset.create_group(patient_id))
+                self._write_patient_data(dataset.create_group(os.path.basename(patient_id)))
 
     @classmethod
     def get_fold_subset_from_file(
@@ -156,6 +156,7 @@ class CrossValidationDatasetGenerator:
         # with open(str(list_fn), "r") as f:
         #     patient_ids = [line for line in f.read().splitlines()]
         patient_ids = glob.glob(str(data / "*"))[:450]
+        patient_ids = [os.path.basename(i) for i in patient_ids]
         # random.shuffle(patient_ids)
         patient_ids = sorted(patient_ids)
         train_set = patient_ids[:int(len(patient_ids) * 0.8)]
@@ -258,6 +259,8 @@ class CrossValidationDatasetGenerator:
             data_x, data_y = sequence, sequence_gt
         else:
             data_x.append(sequence[0])
+            data_x.append(sequence[1])
+            data_y.append(sequence_gt[0])
             data_y.append(sequence_gt[1])
 
             # Update indices of clinically important instants to match the new slicing of the sequences
