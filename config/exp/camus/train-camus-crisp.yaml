@@ -1,10 +1,6 @@
 # @package _global_
 # This header make any parameters in these configs global.
 
-hydra:
- searchpath:
-   - pkg://vital.config
-
 work_dir: ${hydra:runtime.cwd}
 
 defaults:
