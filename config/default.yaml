@@ -23,7 +23,7 @@ seed: 55
 trainer:
   max_epochs: 1000
 
-train: True
+train: False
 test: True
 
 callbacks:

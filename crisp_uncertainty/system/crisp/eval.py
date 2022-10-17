@@ -25,7 +25,7 @@ from matplotlib import pyplot as plt
 from crisp_uncertainty.utils.numpy import prob_to_categorical
 
 
-class EvalCRISP(UncertaintyEvaluationSystem):
+class EvalCRISP(UncertaintyEvaluationSystem, CRISP):
     module: nn.Module
 
     def __init__(
@@ -52,6 +52,20 @@ class EvalCRISP(UncertaintyEvaluationSystem):
 
         # checkpoint = torch.load(hydra.utils.to_absolute_path(self.hparams.module_ckpt))
         # self.load_state_dict(checkpoint["state_dict"], strict=False)
+
+    def encode_set(self, dataloader):
+        train_set_features = []
+        train_set_segs = []
+        for batch in tqdm(iter(dataloader)):
+            seg = batch[Tags.gt].to(self.device)
+            train_set_segs.append(seg.cpu())
+            if self.hparams.data_params.out_shape[0] > 1:
+                seg = to_onehot(seg, num_classes=self.hparams.data_params.out_shape[0]).float()
+            else:
+                seg = seg.unsqueeze(1).float()
+            seg_mu = self.seg_encoder(seg)
+            train_set_features.append(seg_mu.detach().cpu())
+        return train_set_features, train_set_segs
 
     def get_name(self):
         """Get name of current method for saving.
