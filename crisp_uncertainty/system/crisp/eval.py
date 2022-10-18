@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from random import random
 from typing import Tuple
+from collections import OrderedDict
 
 import comet_ml  # noqa
 import hydra
@@ -52,7 +53,11 @@ class EvalCRISP(UncertaintyEvaluationSystem):
         self.module = module
 
         checkpoint = torch.load(hydra.utils.to_absolute_path(self.hparams.module_ckpt))
-        self.module.load_state_dict(checkpoint["state_dict"], strict=True)
+        state_dict = checkpoint["state_dict"]
+        state_dict = OrderedDict({
+            k.replace("module.", ""): state_dict[k] for k in state_dict.keys()
+            })
+        self.module.load_state_dict(state_dict, strict=True)
 
     def encode_set(self, dataloader):
         train_set_features = []
